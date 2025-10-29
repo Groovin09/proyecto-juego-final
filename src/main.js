@@ -1,4 +1,5 @@
 import Bootloader from "../scenes/Bootloader.js"
+import EscenaDebug from "../scenes/EscenaDebug.js"
 
 
 
@@ -9,13 +10,13 @@ const config = {
     type: Phaser.AUTO, //Tipo de renderizado (WEBGL, CANVAS, AUTO)
     // AUTO: busca primero WEBGL y si no está disponible
     // eligirá CANVAS
-    width: 640, //Ancho de pantalla del juego
-    height: 360, //Alto de pantalla del juego
+    width: 1720, //Ancho de pantalla del juego
+    height: 910, //Alto de pantalla del juego
     parent: "contenedor", //Nombre del id del elemento <div> en el index.html
     // se refiere a dónde se pondrá el canvas o lienzo
     pixelArt: true, //Diseño con pixeles definidos (no borrosos)
     backgroundColor: "#34495e", //Color de fondo del canvas ()
-    scene: [Bootloader], //Configuración de la escena o mundos de phaser
+    scene: [Bootloader, EscenaDebug], //Configuración de la escena o mundos de phaser
 };
 
 const game = new Phaser.Game(config);
