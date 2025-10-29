@@ -18,6 +18,12 @@ class Bootloader extends Phaser.Scene{
 
     create() {
 
+        //teclas
+        const keyCodes = Phaser.Input.Keyboard.KeyCodes;
+
+        this.teclaA = this.input.keyboard.addKey(keyCodes.A);
+
+        
         //crear imagenes
         this.CuboRojo = this.add.image(200, 300, "CuboR");
 
