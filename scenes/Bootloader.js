@@ -16,6 +16,12 @@ class Bootloader extends Phaser.Scene{
         this.load.image("CuboR", "assets/sprites/cubo rojo.png");
         this.load.image("PantallaG", "assets/sprites/pantalla1.png");
 
+        //Cielos
+        this.load.image("CieloAzul1", "assets/sprites/Cielos/Cielo 1/1.png");
+        this.load.image("CieloAzul2", "assets/sprites/Cielos/Cielo 1/2.png");
+        this.load.image("CieloAzul3", "assets/sprites/Cielos/Cielo 1/3.png");
+        this.load.image("CieloAzul4", "assets/sprites/Cielos/Cielo 1/4.png");
+
         //Cargar audio
         this.load.audio("Prelude", "assets/audio/PreludeFF7.mp3");
 
@@ -40,6 +46,17 @@ class Bootloader extends Phaser.Scene{
         this.PantallaSecundaria = this.add.image(850, 1300, "PantallaG");
         this.BotonSalirConfig = this.add.image(1400, 1300, "CuboR");
 
+        //Fondos
+        //Cielo 1
+
+        this.Cielo1Fondo = this.add.image(600, 300, "CieloAzul1");
+        this.Cielo2Fondo = this.add.image(860, 400, "CieloAzul2");
+        this.Cielo3Fondo = this.add.image(860, 440, "CieloAzul3");
+        this.Cielo4Fondo = this.add.image(860, -40, "CieloAzul4");
+        
+
+        //Botones config
+
         const Botones = [this.BotonInicio, this.BotonConfig, this.BotonCreditos, this.BotonSalir];
 
         //Configurar imagenes Escala
@@ -53,6 +70,37 @@ class Bootloader extends Phaser.Scene{
 
         this.PantallaSecundaria.setScale(35);
         this.BotonSalirConfig.setScale(3);
+
+        //Fondos
+        //Cielo 1
+
+        this.Cielo1Fondo.setScale(4);
+        this.Cielo2Fondo.setScale(3.2);
+        this.Cielo3Fondo.setScale(3.5);
+        this.Cielo4Fondo.setScale(3.2);
+
+        //Configurar capas
+        //Fondos
+        //Cielo 1
+
+        this.Cielo1Fondo.setDepth(1);
+        this.Cielo2Fondo.setDepth(2);
+        this.Cielo3Fondo.setDepth(3);
+        this.Cielo4Fondo.setDepth(4);
+
+        //Contenido
+        //Botones
+
+        this.BotonInicio.setDepth(10);
+        this.BotonConfig.setDepth(10);
+        this.BotonCreditos.setDepth(10);
+        this.BotonSalir.setDepth(10);
+
+        this.PantallaGuardado1.setDepth(10);
+        this.PantallaGuardado2.setDepth(10);
+
+        this.PantallaSecundaria.setDepth(10);
+        this.BotonSalirConfig.setDepth(10);
 
         //Configurar imagenes Opacidad
         this.PantallaSecundaria.setAlpha(0.9);
@@ -76,6 +124,47 @@ class Bootloader extends Phaser.Scene{
         this.MusicaMenu.play();
 
         //Tweens
+
+        //Fondo
+        //Cielo1
+
+        this.tweens.add({
+
+            targets: this.Cielo2Fondo,
+            x: "+= 50",
+            duration: 10000,
+            ease: "Power3",
+            yoyo: true,
+            repeat: -1,
+            hold: 3000
+
+        });
+
+        this.tweens.add({
+
+            targets: this.Cielo3Fondo,
+            x: 1000,
+            duration: 10000,
+            ease: "Power3",
+            yoyo: true,
+            repeat: -1,
+            hold: 3000
+
+        });
+
+        this.tweens.add({
+
+            targets: this.Cielo4Fondo,
+            x: "-= 50",
+            duration: 10000,
+            ease: "Power3",
+            yoyo: true,
+            repeat: -1,
+            hold: 3000
+
+        });
+
+        //botones
         this.tweens.add({
 
             targets: this.BotonInicio,
@@ -266,6 +355,7 @@ class Bootloader extends Phaser.Scene{
        
         this.scene.start('EscenaDebug'); 
         
+        this.MusicaMenu.stop();
         
     }
 

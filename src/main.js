@@ -17,6 +17,16 @@ const config = {
     pixelArt: true, //Diseño con pixeles definidos (no borrosos)
     backgroundColor: "#34495e", //Color de fondo del canvas ()
     scene: [Bootloader, EscenaDebug], //Configuración de la escena o mundos de phaser
+
+    physics: {
+        default: 'arcade',
+        'arcade': {
+            'gravity': {
+                y: 0
+            },
+            debug: true
+        }
+    }
 };
 
 const game = new Phaser.Game(config);
