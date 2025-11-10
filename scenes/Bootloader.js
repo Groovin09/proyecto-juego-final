@@ -16,11 +16,27 @@ class Bootloader extends Phaser.Scene{
         this.load.image("CuboR", "assets/sprites/cubo rojo.png");
         this.load.image("PantallaG", "assets/sprites/pantalla1.png");
 
+        //Titulo
+        this.load.image("Titulo", "assets/sprites/Titulo/Titulo sin enredaderas.png");
+        this.load.image("Espada", "assets/sprites/Titulo/Espada sin enredaderas.png");
+
+        //Letras titulo
+
+        this.load.image("BotonJugar", "assets/sprites/Titulo/Jugar.png");
+        this.load.image("BotonConfig", "assets/sprites/Titulo/Opciones.png");
+        this.load.image("BotonCreditos", "assets/sprites/Titulo/Creditos.png");
+        this.load.image("BotonSalir", "assets/sprites/Titulo/Salir del juego.png");
+
         //Cielos
         this.load.image("CieloAzul1", "assets/sprites/Cielos/Cielo 1/1.png");
         this.load.image("CieloAzul2", "assets/sprites/Cielos/Cielo 1/2.png");
         this.load.image("CieloAzul3", "assets/sprites/Cielos/Cielo 1/3.png");
         this.load.image("CieloAzul4", "assets/sprites/Cielos/Cielo 1/4.png");
+
+        this.load.image("CieloNoche1", "assets/sprites/Cielos/Cielo 2/1.png");
+        this.load.image("CieloNoche2", "assets/sprites/Cielos/Cielo 2/2.png");
+        this.load.image("CieloNoche3", "assets/sprites/Cielos/Cielo 2/3.png");
+        this.load.image("CieloNoche4", "assets/sprites/Cielos/Cielo 2/4.png");
 
         //Cargar audio
         this.load.audio("Prelude", "assets/audio/PreludeFF7.mp3");
@@ -31,14 +47,20 @@ class Bootloader extends Phaser.Scene{
 
     create() {
 
+        //Crear audio
+        this.MusicaMenu = this.sound.add("Prelude", { loop: true, volume: 1 });
+
+        //Configurar audio
+        this.MusicaMenu.play();
+
         //Eventos
         const eventos = Phaser.Input.Events;
 
         //Crear imagenes
-        this.BotonInicio = this.add.image(100, 900, "CuboR");
-        this.BotonConfig = this.add.image(100, 900, "CuboR");
-        this.BotonCreditos = this.add.image(100, 900, "CuboR");
-        this.BotonSalir = this.add.image(100, 900, "CuboR");
+        this.BotonInicio = this.add.image(150, 900, "BotonJugar");
+        this.BotonConfig = this.add.image(200, 900, "BotonConfig");
+        this.BotonCreditos = this.add.image(200, 900, "BotonCreditos");
+        this.BotonSalir = this.add.image(325, 900, "BotonSalir");
 
         this.PantallaGuardado1 = this.add.image(700, -100, "CuboR");
         this.PantallaGuardado2 = this.add.image(1000, -100, "CuboR");
@@ -46,13 +68,36 @@ class Bootloader extends Phaser.Scene{
         this.PantallaSecundaria = this.add.image(850, 1300, "PantallaG");
         this.BotonSalirConfig = this.add.image(1400, 1300, "CuboR");
 
-        //Fondos
-        //Cielo 1
+        //Titulo===============================================================================================================
 
-        this.Cielo1Fondo = this.add.image(600, 300, "CieloAzul1");
-        this.Cielo2Fondo = this.add.image(860, 400, "CieloAzul2");
-        this.Cielo3Fondo = this.add.image(860, 440, "CieloAzul3");
-        this.Cielo4Fondo = this.add.image(860, -40, "CieloAzul4");
+        this.TituloJuego = this.add.image(450, 200, "Titulo");
+        this.EspadaTitulo = this.add.image(450, 200, "Espada");
+
+        // Fondos: escoger aleatoriamente entre Cielo 1 (día) y Cielo 2 (noche)
+        const skyChoice = Phaser.Math.Between(1, 2); // 1 => Cielo 1, 2 => Cielo 2
+
+        if (skyChoice === 1) {
+
+            // Cielo 1 (día)
+            this.Cielo1Fondo = this.add.image(600, 300, "CieloAzul1");
+            this.Cielo2Fondo = this.add.image(860, 400, "CieloAzul2");
+            this.Cielo3Fondo = this.add.image(860, 440, "CieloAzul3");
+            this.Cielo4Fondo = this.add.image(860, -40, "CieloAzul4");
+            // marcar grupo actual para lógica posterior
+            this.activeSkyGroup = 'day';
+
+        } else {
+
+            // Cielo 2 (noche)
+            this.Cielo1Fondo = this.add.image(600, 300, "CieloNoche1");
+            this.Cielo2Fondo = this.add.image(860, 400, "CieloNoche2");
+            this.Cielo3Fondo = this.add.image(860, 440, "CieloNoche3");
+            this.Cielo4Fondo = this.add.image(860, 350, "CieloNoche4");
+            this.activeSkyGroup = 'night';
+
+        }
+
+        //Cielo 3
         
 
         //Botones config
@@ -60,10 +105,10 @@ class Bootloader extends Phaser.Scene{
         const Botones = [this.BotonInicio, this.BotonConfig, this.BotonCreditos, this.BotonSalir];
 
         //Configurar imagenes Escala
-        this.BotonInicio.setScale(3);
-        this.BotonConfig.setScale(3);
-        this.BotonCreditos.setScale(3);
-        this.BotonSalir.setScale(3);
+        this.BotonInicio.setScale(7);
+        this.BotonConfig.setScale(7);
+        this.BotonCreditos.setScale(7);
+        this.BotonSalir.setScale(7);
 
         this.PantallaGuardado1.setScale(6);
         this.PantallaGuardado2.setScale(6);
@@ -71,22 +116,27 @@ class Bootloader extends Phaser.Scene{
         this.PantallaSecundaria.setScale(35);
         this.BotonSalirConfig.setScale(3);
 
-        //Fondos
-        //Cielo 1
+        this.TituloJuego.setScale(10);
+        this.EspadaTitulo.setScale(10);
 
+        // Escalar los 4 elementos del cielo activo
         this.Cielo1Fondo.setScale(4);
         this.Cielo2Fondo.setScale(3.2);
         this.Cielo3Fondo.setScale(3.5);
         this.Cielo4Fondo.setScale(3.2);
 
         //Configurar capas
-        //Fondos
-        //Cielo 1
 
+        //Titulo
+
+        this.TituloJuego.setDepth(10);
+        this.EspadaTitulo.setDepth(9);
+
+        // Profundidad (depth) para las 4 capas del cielo activo
         this.Cielo1Fondo.setDepth(1);
         this.Cielo2Fondo.setDepth(2);
         this.Cielo3Fondo.setDepth(3);
-        this.Cielo4Fondo.setDepth(4);
+        this.Cielo4Fondo.setDepth(2);
 
         //Contenido
         //Botones
@@ -116,12 +166,6 @@ class Bootloader extends Phaser.Scene{
 
         this.pantallaArriba = false;
         this.BotonSalirConfigArriba = false;
-    
-        //Crear audio
-        this.MusicaMenu = this.sound.add("Prelude", { loop: true, volume: 1 });
-
-        //Configurar audio
-        this.MusicaMenu.play();
 
         //Tweens
 

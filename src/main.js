@@ -1,5 +1,6 @@
 import Bootloader from "../scenes/Bootloader.js"
 import EscenaDebug from "../scenes/EscenaDebug.js"
+import PeleaDebug from "../scenes/PeleaDebug.js"
 
 
 
@@ -16,7 +17,7 @@ const config = {
     // se refiere a dónde se pondrá el canvas o lienzo
     pixelArt: true, //Diseño con pixeles definidos (no borrosos)
     backgroundColor: "#34495e", //Color de fondo del canvas ()
-    scene: [Bootloader, EscenaDebug], //Configuración de la escena o mundos de phaser
+    scene: [Bootloader, EscenaDebug, PeleaDebug], //Configuración de la escena o mundos de phaser
 
     physics: {
         default: 'arcade',

@@ -25,14 +25,17 @@ class Bootloader extends Phaser.Scene{
         this.load.image("Estructuras", "assets/Tiles/Estructuras piedra.png");
 
         //JSON
-        this.load.tilemapTiledJSON("MapaDebug", "assets/Json/Debug.tmj");
+        this.load.tilemapTiledJSON("MapaDebug", "assets/Json/DebugColisiones.tmj");
 
     }
 
     create() {
+        //mapa copilot
+
+        
 
         //Mapa
-        const map = this.make.tilemap({key: "MapaDebug"});
+        const map = this.make.tilemap({ key: "MapaDebug" });
        
         const SueloTS = map.addTilesetImage("Suelo", "Suelo");
         const ParedesTS = map.addTilesetImage("Paredes", "Paredes");
@@ -41,22 +44,55 @@ class Bootloader extends Phaser.Scene{
         const PlantasTS = map.addTilesetImage("Naturaleza", "Plantas");
         
         const sueloLayer = map.createLayer('Suelo', SueloTS, 0, 0);
-        const paredesLayer = map.createLayer('Paredes', ParedesTS, 0, 0);
+        // Crear la capa Paredes como StaticLayer para que sea estática
+        const paredesLayer = map.createStaticLayer('Paredes', ParedesTS, 0, 0);
         const escalerasLayer = map.createLayer("Estructuras caminables", EscalerasTS, 0, 0);
         const objetosLayer = map.createLayer("interactuables", EstructurasTS, 0, 0);
         const PlantasLayer = map.createLayer("adornos", PlantasTS, 0, 0);
         const EstructurasLayer = map.createLayer("adornos", EstructurasTS, 0, 0);
         
-        
+        // Crear colliders personalizados a partir de las propiedades que definiste en Tiled
+        // Espera las propiedades (en píxeles) en cada tile: collisionWidth, collisionHeight,
+        // collisionOffsetX, collisionOffsetY y la bandera collides (boolean).
+        // Esto evita las colisiones por tile uniformes y permite tamaños/offsets distintos.
+
+        // Grupo de colliders estáticos que representarán las áreas de colisión
+        const wallColliders = this.physics.add.staticGroup();
+
+        // Recorrer tiles y crear rectángulos estáticos según propiedades de Tiled
+        paredesLayer.forEachTile(tile => {
+            if (tile && tile.properties && tile.properties.collides) {
+                const tileW = map.tileWidth;
+                const tileH = map.tileHeight;
+                const w = tile.properties.collisionWidth || tileW;
+                const h = tile.properties.collisionHeight || tileH;
+                const offsetX = tile.properties.collisionOffsetX || 0;
+                const offsetY = tile.properties.collisionOffsetY || 0;
+
+                // Calcular posición en píxeles (tile.pixelX / tile.pixelY es la esquina superior izquierda)
+                const x = tile.pixelX + offsetX + w / 2;
+                const y = tile.pixelY + offsetY + h / 2;
+
+                // Crear rectángulo invisible y añadirle un cuerpo estático de Arcade
+                const rect = this.add.rectangle(x, y, w, h);
+                rect.setOrigin(0.5);
+                rect.visible = false; // oculto en juego
+                this.physics.add.existing(rect, true); // true -> static body
+                wallColliders.add(rect);
+            }
+        });
+
+        // Ajustar los bounds del mundo y de la cámara al tamaño del mapa
+        this.physics.world.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
+        this.cameras.main.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
+
         //Crear fisicas del jugador
         this.player = this.physics.add.sprite(1329, 685, "CuboR")
         this.player.setCollideWorldBounds(false);
-        
-        paredesLayer.setCollisionBetween(17, 17);
-        
-        this.physics.add.collider(this.player, paredesLayer);
-        
-        
+
+        // Añadir colisión entre jugador y los colliders estáticos generados desde Tiled
+        this.physics.add.collider(this.player, wallColliders);
+
         //Camara que sigue al jugador
         this.cameras.main.startFollow(this.player);
         
@@ -78,6 +114,14 @@ class Bootloader extends Phaser.Scene{
         this.playerSpeed = 100;
 
         this.player.setScale(0.7);
+        
+        //Enemigo
+        this.cuboR = this.physics.add.sprite(1500, 685, "CuboR");
+        this.cuboR.setImmovable(true);
+        this.cuboR.setScale(0.7);
+
+        // Detectar overlap/colisión entre el jugador y el cubo rojo
+        this.physics.add.overlap(this.player, this.cuboR, this.collectCuboR, null, this);
     }
 
     update(time, delta) {
@@ -110,6 +154,18 @@ class Bootloader extends Phaser.Scene{
         
     }
 
+    // Callback llamado cuando player colisiona con el cubo rojo
+    collectCuboR(player, cubo) {
+
+        // Desactivar el cubo y lanzar la escena de pelea
+        cubo.disableBody(true, true);
+        console.log('Player colisionó con CuboR — iniciando escena PeleaDebug');
+        // Iniciar la escena de pelea (usa la key definida en PeleaDebug.js)
+        // Puedes pasar un objeto con datos si la escena de pelea los necesita
+        this.scene.start('PeleaDebug', { from: 'EscenaDebug' });
+    }
+
+    
 }
 
 export default Bootloader;
