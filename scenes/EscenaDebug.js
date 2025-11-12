@@ -13,7 +13,8 @@ class Bootloader extends Phaser.Scene{
     preload() {
 
         //Personaje
-        this.load.image("CuboR", "assets/sprites/cubo rojo.png");
+        this.load.image("Caballero", "assets/Animaciones/Caballero/Front_0.png");
+        this.load.image("Mago", "assets/Animaciones/Mago/MFront_0.png");
 
         //Mapa
         //Tileset
@@ -30,10 +31,7 @@ class Bootloader extends Phaser.Scene{
     }
 
     create() {
-        //mapa copilot
-
-        
-
+ 
         //Mapa
         const map = this.make.tilemap({ key: "MapaDebug" });
        
@@ -50,11 +48,6 @@ class Bootloader extends Phaser.Scene{
         const objetosLayer = map.createLayer("interactuables", EstructurasTS, 0, 0);
         const PlantasLayer = map.createLayer("adornos", PlantasTS, 0, 0);
         const EstructurasLayer = map.createLayer("adornos", EstructurasTS, 0, 0);
-        
-        // Crear colliders personalizados a partir de las propiedades que definiste en Tiled
-        // Espera las propiedades (en píxeles) en cada tile: collisionWidth, collisionHeight,
-        // collisionOffsetX, collisionOffsetY y la bandera collides (boolean).
-        // Esto evita las colisiones por tile uniformes y permite tamaños/offsets distintos.
 
         // Grupo de colliders estáticos que representarán las áreas de colisión
         const wallColliders = this.physics.add.staticGroup();
@@ -87,8 +80,9 @@ class Bootloader extends Phaser.Scene{
         this.cameras.main.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
 
         //Crear fisicas del jugador
-        this.player = this.physics.add.sprite(1329, 685, "CuboR")
+        this.player = this.physics.add.sprite(1329, 685, "Caballero");
         this.player.setCollideWorldBounds(false);
+        this.player.setDepth(5);
 
         // Añadir colisión entre jugador y los colliders estáticos generados desde Tiled
         this.physics.add.collider(this.player, wallColliders);
@@ -113,44 +107,97 @@ class Bootloader extends Phaser.Scene{
         //velocidad del jugador
         this.playerSpeed = 100;
 
-        this.player.setScale(0.7);
+        this.player.setScale(1.1);
+
+        // Modificar la colisión del jugador: mitad de altura en el eje Y, posicionada en el borde de abajo
+        const playerBody = this.player.body;
+        const originalHeight = playerBody.height;
+        const newHeight = originalHeight / 2; // mitad de la altura
+        const offsetY = 16; // desplazar hacia abajo (desde el centro original)
+        
+        playerBody.setSize(playerBody.width, newHeight);
+        playerBody.setOffset(playerBody.offset.x, offsetY);
         
         //Enemigo
-        this.cuboR = this.physics.add.sprite(1500, 685, "CuboR");
+        this.cuboR = this.physics.add.sprite(1500, 900, "CuboR");
         this.cuboR.setImmovable(true);
         this.cuboR.setScale(0.7);
 
         // Detectar overlap/colisión entre el jugador y el cubo rojo
         this.physics.add.overlap(this.player, this.cuboR, this.collectCuboR, null, this);
+
+        // Segundo cubo que sigue al jugador
+        this.cuboSeguidor = this.physics.add.sprite(1329, 670, "Mago");
+        this.cuboSeguidor.setScale(1.1);
+        this.velocidadSeguidor = 100; // velocidad del cubo seguidor
+        // No debe ser empujado por el jugador
+        this.cuboSeguidor.setImmovable(true);
+
+        // Modificar la colisión del cubo seguidor (opcional, igual que el jugador)
+        const seguidorBody = this.cuboSeguidor.body;
+        const seguidorOriginalHeight = seguidorBody.height;
+        const seguidorNewHeight = seguidorOriginalHeight; // mitad de la altura
+        const seguidorOffsetY = 0; // desplazar hacia abajo
+        
+        seguidorBody.setSize(seguidorBody.width, seguidorNewHeight);
+        seguidorBody.setOffset(seguidorBody.offset.x, seguidorOffsetY);
+
+        // Añadir overlap (no bloqueante) entre el jugador y el cubo seguidor
+        // Así el jugador puede pasar a través sin ser empujado
+        this.physics.add.overlap(this.player, this.cuboSeguidor);
     }
 
     update(time, delta) {
 
         //Reiniciar velocidad
-        this.player.setVelocity(0);
+        let velocidadX = 0;
+        let velocidadY = 0;
 
         if(this.keys.A.isDown) {
 
-            this.player.setVelocityX(-this.playerSpeed);
+            velocidadX -= this.playerSpeed;
 
         }
-        else if(this.keys.D.isDown) {
+        if(this.keys.D.isDown) {
 
-            this.player.setVelocityX(this.playerSpeed);
+            velocidadX += this.playerSpeed;
 
         }
 
         if(this.keys.W.isDown) {
 
-            this.player.setVelocityY(-this.playerSpeed);
+            velocidadY -= this.playerSpeed;
 
         }
-        else if(this.keys.S.isDown) {
+        if(this.keys.S.isDown) {
 
-            this.player.setVelocityY(this.playerSpeed);
+            velocidadY += this.playerSpeed;
 
         }
 
+        // Normalizar la velocidad para evitar que las diagonales sean más rápidas
+        const magnitud = Math.sqrt(velocidadX * velocidadX + velocidadY * velocidadY);
+        if (magnitud > 0) {
+            velocidadX = (velocidadX / magnitud) * this.playerSpeed;
+            velocidadY = (velocidadY / magnitud) * this.playerSpeed;
+        }
+
+        this.player.setVelocity(velocidadX, velocidadY);
+
+        // Lógica para que el segundo cubo siga al jugador
+        const dx = this.player.x - this.cuboSeguidor.x;
+        const dy = this.player.y - this.cuboSeguidor.y;
+        const distancia = Math.sqrt(dx * dx + dy * dy);
+
+        const distanciaMinima = 30; // distancia mínima para detenerse (en píxeles)
+
+        if (distancia > distanciaMinima) {
+            const velocidadX = (dx / distancia) * this.velocidadSeguidor;
+            const velocidadY = (dy / distancia) * this.velocidadSeguidor;
+            this.cuboSeguidor.setVelocity(velocidadX, velocidadY);
+        } else {
+            this.cuboSeguidor.setVelocity(0, 0);
+        }
         
     }
 

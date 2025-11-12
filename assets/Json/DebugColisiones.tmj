@@ -3097,30 +3097,30 @@
                                     }, 
                                     {
                                      "x":0,
-                                     "y":-31.9049
+                                     "y":-31.3884
                                     }, 
                                     {
-                                     "x":31.4754,
-                                     "y":-31.8431
+                                     "x":30.4822,
+                                     "y":-31.3276
                                     }, 
                                     {
-                                     "x":31.4754,
-                                     "y":-24.2997
+                                     "x":30.4822,
+                                     "y":-23.9063
                                     }, 
                                     {
-                                     "x":7.54674,
-                                     "y":-24.176
+                                     "x":7.30859,
+                                     "y":-23.7846
                                     }, 
                                     {
-                                     "x":7.54674,
-                                     "y":-0.0618312
+                                     "x":7.30859,
+                                     "y":-0.0608303
                                     }],
                              "rotation":0,
                              "type":"",
                              "visible":true,
                              "width":0,
                              "x":0.490845,
-                             "y":32.0276
+                             "y":31.5111
                             }],
                      "opacity":1,
                      "type":"objectgroup",
@@ -3165,6 +3165,26 @@
                          "name":"collides",
                          "type":"bool",
                          "value":true
+                        }, 
+                        {
+                         "name":"collisionHeight",
+                         "type":"int",
+                         "value":5
+                        }, 
+                        {
+                         "name":"collisionOffsetX",
+                         "type":"int",
+                         "value":1
+                        }, 
+                        {
+                         "name":"collisionOffsetY",
+                         "type":"int",
+                         "value":1
+                        }, 
+                        {
+                         "name":"collisionWidth",
+                         "type":"int",
+                         "value":31
                         }]
                 }, 
                 {
@@ -4148,6 +4168,26 @@
                          "name":"collides",
                          "type":"bool",
                          "value":true
+                        }, 
+                        {
+                         "name":"collisionHeight",
+                         "type":"int",
+                         "value":31
+                        }, 
+                        {
+                         "name":"collisionOffsetX",
+                         "type":"int",
+                         "value":25
+                        }, 
+                        {
+                         "name":"collisionOffsetY",
+                         "type":"int",
+                         "value":1
+                        }, 
+                        {
+                         "name":"collisionWidth",
+                         "type":"int",
+                         "value":7
                         }]
                 }, 
                 {

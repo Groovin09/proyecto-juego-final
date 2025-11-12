@@ -5,6 +5,67 @@ class Bootloader extends Phaser.Scene{
         });
     }
 
+    showGameOptions() {
+        // Si ya están abiertas, no hacemos nada (o las cerramos)
+        if (this.optionsOpen) return;
+        this.optionsOpen = true;
+    // objetivos finales: se extienden hacia la derecha desde BotonInicio
+    // Nueva Partida irá arriba, Continuar irá abajo para evitar tapar el botón Opciones
+    const offsetXContinuar = 305; // más hacia la derecha
+    const offsetX = 360; // más hacia la derecha
+    const targetX = this.BotonInicio.x + offsetX;
+    const targetXContinuar = this.BotonInicio.x + offsetXContinuar;
+    const targetY1 = this.BotonInicio.y - 40; // Nueva Partida (arriba, menos separación)
+    const targetY2 = this.BotonInicio.y + 40;  // Continuar (abajo, menos separación)
+    const targetScale = 5; // un poco más pequeños
+
+        // tween: escalar y mover los botones desde la posición del BotonInicio hacia la derecha
+        this.tweens.add({
+            targets: this.BotonNuevaPartida,
+            x: targetX,
+            y: targetY1,
+            scale: targetScale,
+            alpha: { from: 0, to: 1 },
+            duration: 400,
+            ease: 'Back',
+        });
+
+        this.tweens.add({
+            targets: this.BotonContinuar,
+            delay: 80,
+            x: targetXContinuar,
+            y: targetY2,
+            scale: targetScale,
+            alpha: { from: 0, to: 1 },
+            duration: 450,
+            ease: 'Back',
+        });
+    }
+
+    hideGameOptions() {
+        if (!this.optionsOpen) return;
+        this.optionsOpen = false;
+
+        // retraer los botones hacia BotonInicio
+        this.tweens.add({
+            targets: [this.BotonNuevaPartida, this.BotonContinuar],
+            x: this.BotonInicio.x,
+            y: this.BotonInicio.y,
+            scale: 0,
+            duration: 300,
+            ease: 'Power2'
+        });
+    }
+
+    toggleGameOptions() {
+        // Alterna la visibilidad de las opciones: si están abiertas las cierra, si no, las abre
+        if (this.optionsOpen) {
+            this.hideGameOptions();
+        } else {
+            this.showGameOptions();
+        }
+    }
+
     init() {
         
         console.log("Soy init");
@@ -27,6 +88,9 @@ class Bootloader extends Phaser.Scene{
         this.load.image("BotonCreditos", "assets/sprites/Titulo/Creditos.png");
         this.load.image("BotonSalir", "assets/sprites/Titulo/Salir del juego.png");
 
+        this.load.image("BotonNuevaPartida", "assets/sprites/Titulo/Nueva Partida.png");
+        this.load.image("BotonContinuar", "assets/sprites/Titulo/Continuar.png");
+
         //Cielos
         this.load.image("CieloAzul1", "assets/sprites/Cielos/Cielo 1/1.png");
         this.load.image("CieloAzul2", "assets/sprites/Cielos/Cielo 1/2.png");
@@ -37,6 +101,11 @@ class Bootloader extends Phaser.Scene{
         this.load.image("CieloNoche2", "assets/sprites/Cielos/Cielo 2/2.png");
         this.load.image("CieloNoche3", "assets/sprites/Cielos/Cielo 2/3.png");
         this.load.image("CieloNoche4", "assets/sprites/Cielos/Cielo 2/4.png");
+
+        this.load.image("CieloAtardecer1", "assets/sprites/Cielos/Cielo 3/1.png");
+        this.load.image("CieloAtardecer2", "assets/sprites/Cielos/Cielo 3/2.png");
+        this.load.image("CieloAtardecer3", "assets/sprites/Cielos/Cielo 3/3.png");
+        this.load.image("CieloAtardecer4", "assets/sprites/Cielos/Cielo 3/4.png");
 
         //Cargar audio
         this.load.audio("Prelude", "assets/audio/PreludeFF7.mp3");
@@ -73,21 +142,20 @@ class Bootloader extends Phaser.Scene{
         this.TituloJuego = this.add.image(450, 200, "Titulo");
         this.EspadaTitulo = this.add.image(450, 200, "Espada");
 
-        // Fondos: escoger aleatoriamente entre Cielo 1 (día) y Cielo 2 (noche)
-        const skyChoice = Phaser.Math.Between(1, 2); // 1 => Cielo 1, 2 => Cielo 2
+        // Fondos: escoger aleatoriamente entre Cielo 1 (día), Cielo 2 (noche) y Cielo 3 (atardecer)
+        const skyChoice = Phaser.Math.Between(1, 3); // 1 => Cielo 1, 2 => Cielo 2, 3 => Cielo 3
 
         if (skyChoice === 1) {
-
             // Cielo 1 (día)
             this.Cielo1Fondo = this.add.image(600, 300, "CieloAzul1");
             this.Cielo2Fondo = this.add.image(860, 400, "CieloAzul2");
             this.Cielo3Fondo = this.add.image(860, 440, "CieloAzul3");
             this.Cielo4Fondo = this.add.image(860, -40, "CieloAzul4");
+            
             // marcar grupo actual para lógica posterior
             this.activeSkyGroup = 'day';
 
-        } else {
-
+        } else if (skyChoice === 2) {
             // Cielo 2 (noche)
             this.Cielo1Fondo = this.add.image(600, 300, "CieloNoche1");
             this.Cielo2Fondo = this.add.image(860, 400, "CieloNoche2");
@@ -95,9 +163,16 @@ class Bootloader extends Phaser.Scene{
             this.Cielo4Fondo = this.add.image(860, 350, "CieloNoche4");
             this.activeSkyGroup = 'night';
 
+        } else {
+            // Cielo 3 (atardecer)
+            this.Cielo1Fondo = this.add.image(600, 300, "CieloAtardecer1");
+            this.Cielo2Fondo = this.add.image(860, 400, "CieloAtardecer2");
+            this.Cielo3Fondo = this.add.image(860, 440, "CieloAtardecer3");
+            this.Cielo4Fondo = this.add.image(860, 400, "CieloAtardecer4");
+            this.activeSkyGroup = 'sunset';
         }
 
-        //Cielo 3
+        //Botones config
         
 
         //Botones config
@@ -136,7 +211,12 @@ class Bootloader extends Phaser.Scene{
         this.Cielo1Fondo.setDepth(1);
         this.Cielo2Fondo.setDepth(2);
         this.Cielo3Fondo.setDepth(3);
-        this.Cielo4Fondo.setDepth(2);
+        // Si es el grupo de atardecer, Cielo4 va por encima de Cielo3
+        if (this.activeSkyGroup === 'sunset') {
+            this.Cielo4Fondo.setDepth(4);
+        } else {
+            this.Cielo4Fondo.setDepth(2);
+        }
 
         //Contenido
         //Botones
@@ -272,10 +352,32 @@ class Bootloader extends Phaser.Scene{
             });
         });
 
-        //Boton inicio
+        //Boton inicio: ahora mostrará opciones (Nueva Partida / Continuar) con tweens
+        this.optionsOpen = false; // estado de las opciones de juego
+        // crear los botones de opción pero manteniéndolos sobre el BotonInicio (serán animados)
+        this.BotonNuevaPartida = this.add.image(this.BotonInicio.x, this.BotonInicio.y, 'BotonNuevaPartida');
+        this.BotonContinuar = this.add.image(this.BotonInicio.x, this.BotonInicio.y, 'BotonContinuar');
+        // mismo escalado inicial que el resto pero empezamos con scale 0 para 'extender'
+    this.BotonNuevaPartida.setScale(0);
+    this.BotonContinuar.setScale(0);
+    this.BotonNuevaPartida.setAlpha(0);
+    this.BotonContinuar.setAlpha(0);
+        this.BotonNuevaPartida.setDepth(11);
+        this.BotonContinuar.setDepth(11);
+        this.BotonNuevaPartida.setInteractive();
+        this.BotonContinuar.setInteractive();
+        // eventos: click en Nuevo inicia escena EscenaDebug
+        this.BotonNuevaPartida.on('pointerdown', () => {
+            this.scene.start('EscenaDebug');
+            this.MusicaMenu.stop();
+        });
+        // click en continuar simplemente cerrará las opciones (puedes cambiarlo para cargar partida)
+        this.BotonContinuar.on('pointerdown', () => {
+            this.hideGameOptions();
+        });
 
-        this.BotonInicio.on('pointerdown', this.moverPantallaSeleccion, this);
-        this.BotonInicio.on('pointerdown', this.manejarToggle, this);
+    // binding del boton jugar para alternar (abrir/cerrar) las opciones
+    this.BotonInicio.on('pointerdown', this.toggleGameOptions, this);
         this.originalY = this.PantallaGuardado1.y;
         this.objetosAbajo = false;
         this.descenso = 550;
@@ -341,6 +443,12 @@ class Bootloader extends Phaser.Scene{
 
                 this.BotonSalirConfigArriba = false;
             }
+        });
+
+        //Boton Salir (Exit Game)
+        this.BotonSalir.on('pointerdown', () => {
+            // Cerrar el juego
+            this.game.destroy(true);
         });
 
         
