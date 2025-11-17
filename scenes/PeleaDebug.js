@@ -71,14 +71,14 @@ class PeleaDebug extends Phaser.Scene {
 
         // === CREAR SPRITES DE PERSONAJES DEL JUGADOR ===
         // Lado izquierdo en dos filas (Knight en Y=300, Mage en Y=450)
-        this.playerParty[0].sprite = this.add.sprite(150, 300, 'CuboR').setScale(2);
-        this.playerParty[1].sprite = this.add.sprite(150, 450, 'CuboR').setScale(2).setTint(0xFF6600); // Mago naranja
+        this.playerParty[1].sprite = this.add.sprite(350, 300, 'CuboR').setScale(3);
+        this.playerParty[0].sprite = this.add.sprite(450, 450, 'CuboR').setScale(4).setTint(0xFF6600); // Caballero naranja
 
         // === CREAR SPRITES DE ENEMIGOS ===
         // Lado derecho en tres filas, teñidos de azul para diferenciarlos
-        this.enemyParty[0].sprite = this.add.sprite(700, 200, 'CuboR').setScale(1.5).setTint(0x0000FF);
-        this.enemyParty[1].sprite = this.add.sprite(700, 350, 'CuboR').setScale(1.5).setTint(0x0000FF);
-        this.enemyParty[2].sprite = this.add.sprite(700, 500, 'CuboR').setScale(1.5).setTint(0x0000FF);
+        this.enemyParty[0].sprite = this.add.sprite(1300, 300, 'CuboR').setScale(3.5).setTint(0x0000FF);
+        this.enemyParty[1].sprite = this.add.sprite(1390, 350, 'CuboR').setScale(4).setTint(0x0000FF);
+        this.enemyParty[2].sprite = this.add.sprite(1500, 450, 'CuboR').setScale(5).setTint(0x0000FF);
 
         // === CREAR BARRAS DE VIDA ===
         // Función que genera las barras de HP para jugador y enemigos
@@ -345,29 +345,91 @@ class PeleaDebug extends Phaser.Scene {
             return;
         }
 
-        // Calcular daño según el tipo de ataque
-        const damage = attack.type === 'strong' ? 30 : 15;
-        target.hp = Math.max(0, target.hp - damage); // Asegurar HP no sea negativo
+        // === ANIMAR SALTO PARABÓLICO DEL ATACANTE HACIA EL ENEMIGO ===
+        // Guardar posición original del atacante y cámara
+        const originalX = attacker.sprite.x;
+        const originalY = attacker.sprite.y;
+        
+        // Calcular posición junto al enemigo (más cerca pero sin superposición)
+        const targetX = target.sprite.x - 150; // Posicionarse a la izquierda del enemigo
+        const targetY = target.sprite.y; // Misma altura
+        
+        // Altura máxima del arco parabólico (peak del salto)
+        const maxHeight = 150;
+        
+        // Distancia total horizontal del salto
+        const distanceX = targetX - originalX;
+        const distanceY = targetY - originalY;
+        
+        // Duración del salto de ida (400ms)
+        const jumpDuration = 400;
 
-        // Decrementar el contador de usos del ataque
-        if (attack.type === 'normal') attacker.normalAttackUses--;
-        else if (attack.type === 'strong') attacker.strongAttackUses--;
+        // === SALTO DE IDA CON PARÁBOLA Y CÁMARA ===
+        this.tweens.add({
+            targets: { progress: 0 },
+            progress: 1,
+            duration: jumpDuration,
+            ease: 'Linear',
+            onUpdate: (tween) => {
+                const t = tween.progress; // Valor de 0 a 1
+                
+                // Ecuación parabólica para altura: -4 * maxHeight * t * (t - 1)
+                const heightOffset = 4 * maxHeight * t * (t - 1);
+                
+                // Movimiento lineal horizontal y vertical del atacante
+                attacker.sprite.x = originalX + distanceX * t;
+                attacker.sprite.y = originalY + distanceY * t + heightOffset;
+                
+            },
+            onComplete: () => {
+                // === ESPERAR 1 SEGUNDO ===
+                this.time.delayedCall(1000, () => {
+                    // === EJECUTAR ATAQUE ===
+                    // Calcular daño según el tipo de ataque
+                    const damage = attack.type === 'strong' ? 30 : 15;
+                    target.hp = Math.max(0, target.hp - damage); // Asegurar HP no sea negativo
 
-        // Mostrar número de daño encima del enemigo
-        this.add.text(target.sprite.x, target.sprite.y - 40, `-${damage}`, {
-            font: '20px Arial',
-            fill: '#FF0000'
-        }).setOrigin(0.5, 0.5).setDepth(10).setData('floatingText', true);
+                    // Decrementar el contador de usos del ataque
+                    if (attack.type === 'normal') attacker.normalAttackUses--;
+                    else if (attack.type === 'strong') attacker.strongAttackUses--;
 
-        // Marcar enemigo como muerto si su HP llegó a 0
-        if (target.hp <= 0) target.dead = true;
+                    // Mostrar número de daño encima del enemigo
+                    this.add.text(target.sprite.x, target.sprite.y - 40, `-${damage}`, {
+                        font: '20px Arial',
+                        fill: '#FF0000'
+                    }).setOrigin(0.5, 0.5).setDepth(10).setData('floatingText', true);
 
-        // Actualizar visualización de barras de vida
-        this.updateHPDisplay();
+                    // Marcar enemigo como muerto si su HP llegó a 0
+                    if (target.hp <= 0) target.dead = true;
 
-        // Esperar 1 segundo y terminar turno
-        this.time.delayedCall(1000, () => {
-            this.endPlayerTurn();
+                    // Actualizar visualización de barras de vida
+                    this.updateHPDisplay();
+
+                    // === SALTO DE REGRESO CON PARÁBOLA Y CÁMARA ===
+                    this.tweens.add({
+                        targets: { progress: 0 },
+                        progress: 1,
+                        duration: jumpDuration,
+                        ease: 'Linear',
+                        onUpdate: (tween) => {
+                            const t = tween.progress; // Valor de 0 a 1
+                            
+                            // Ecuación parabólica para altura
+                            const heightOffset = 4 * maxHeight * t * (t - 1);
+                            
+                            // Movimiento lineal de regreso
+                            attacker.sprite.x = targetX - distanceX * t;
+                            attacker.sprite.y = targetY - distanceY * t + heightOffset;
+                            
+                        },
+                        onComplete: () => {
+                            
+                            // Terminar turno después de regresar
+                            this.endPlayerTurn();
+                        }
+                    });
+                });
+            }
         });
     }
 

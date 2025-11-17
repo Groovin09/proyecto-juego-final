@@ -16,7 +16,7 @@ const config = {
     parent: "contenedor", //Nombre del id del elemento <div> en el index.html
     // se refiere a dónde se pondrá el canvas o lienzo
     pixelArt: true, //Diseño con pixeles definidos (no borrosos)
-    backgroundColor: "#34495e", //Color de fondo del canvas ()
+    backgroundColor: "#000000ff", //Color de fondo del canvas ()
     scene: [Bootloader, EscenaDebug, PeleaDebug], //Configuración de la escena o mundos de phaser
 
     physics: {
