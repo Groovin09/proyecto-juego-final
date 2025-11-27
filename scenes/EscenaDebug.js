@@ -70,6 +70,17 @@ class Bootloader extends Phaser.Scene {
         this.load.tilemapTiledJSON("MapaDebug", "assets/Json/DebugColisiones.tmj");
 
         // (opcional) favicon puede dar 404, no crítico
+
+        //=========================================================
+        // MUSICA
+        //=========================================================
+        this.load.audio('Hollow', 'assets/Audio/HollowFFVII.mp3');
+
+        // ==========================================================
+        // IMAGENES
+        // ==========================================================
+        
+        this.load.image('WASD', 'assets/sprites/WASD.png');
     }
 
     create() {
@@ -133,9 +144,51 @@ class Bootloader extends Phaser.Scene {
 
         // Hitbox corregido
         if (this.player.body) {
-            this.player.body.setSize(this.player.width * 0.8, this.player.height * 0.45);
-            this.player.body.setOffset(5, 18);
+            this.player.body.setSize(this.player.width * 0.8, this.player.height * 0.5);
+            this.player.body.setOffset(2, 13);
         }
+
+        // ==========================================================
+        // ZONA DE COLISIÓN PARA AUDIO "HOLLOW"
+        // ==========================================================
+        const groundZone = this.add.zone(900, 780, 50, 120);
+        this.physics.world.enable(groundZone);
+        groundZone.body.setAllowGravity(false);
+        groundZone.body.moves = false;
+
+        this.physics.add.overlap(this.player, groundZone, () => {
+            this.sound.play('Hollow');
+            // Destruir la zona después de reproducir el audio para que no se vuelva a reproducir
+            groundZone.destroy();
+        }, null, this);
+
+        // ==========================================================
+        // IMAGEN WASD - MOSTRAR ARRIBA DEL JUGADOR
+        // ==========================================================
+        const wasdImage = this.add.image(this.player.x, this.player.y - 60, 'WASD');
+        wasdImage.setScale(1);
+        wasdImage.setAlpha(0); // Comienza invisible
+
+        // Aparecer gradualmente en 1 segundo
+        this.tweens.add({
+            targets: wasdImage,
+            alpha: 1,
+            duration: 1000, // 1 segundo de fade in
+            ease: 'Linear'
+        });
+
+        // Después de 20 segundos, desaparecer gradualmente
+        this.time.delayedCall(20000, () => {
+            this.tweens.add({
+                targets: wasdImage,
+                alpha: 0,
+                duration: 1500, // 1.5 segundos de fade out
+                ease: 'Linear',
+                onComplete: () => {
+                    wasdImage.destroy();
+                }
+            });
+        });
 
        // ==========================================================
 // ENEMIGO — CUBO ROJO (ahora móvil y persigue al jugador)
@@ -163,20 +216,20 @@ this.physics.add.collider(this.cuboR, wallColliders);
 this.physics.add.overlap(this.player, this.cuboR, this.collectCuboR, null, this);
 
 // Parámetros de IA
-this.cuboR.speed = 75;          // velocidad de persecución
-this.cuboR.minFollowDist = 6;   // distancia a la que se detiene (pixeles)
+this.cuboR.speed = 20;          // velocidad de persecución
+this.cuboR.minFollowDist = 10;   // distancia a la que se detiene (pixeles)
 
 
         // ==========================================================
         // — MAGO SEGUIDOR
         // ==========================================================
 
-        this.cuboSeguidor = this.physics.add.sprite(1400, 700, "Mago_Front0");
+        this.cuboSeguidor = this.physics.add.sprite(1329, 660, "Mago_Front0");
 
         this.cuboSeguidor.setScale(1.1);
-        this.physics.add.collider(this.cuboSeguidor, wallColliders);
+        
 
-        this.velocidadSeguidor = 100;
+        this.velocidadSeguidor = 70;
 
         // hitbox del mago
         if (this.cuboSeguidor.body) {
@@ -198,7 +251,7 @@ this.cuboR.minFollowDist = 6;   // distancia a la que se detiene (pixeles)
             D: Phaser.Input.Keyboard.KeyCodes.D,
         });
 
-        this.playerSpeed = 100;
+        this.playerSpeed = 70;
 
         // ==========================================================
         // ANIMACIONES CABALLERO
