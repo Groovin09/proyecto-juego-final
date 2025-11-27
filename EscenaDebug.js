@@ -63,6 +63,9 @@ class Bootloader extends Phaser.Scene {
     }
 
     create() {
+     
+        // Declarar lista de tótems ya recogidos (para que no reaparezcan)
+    this.collectedTotems = [];
         // this.input.on("pointerdown", (pointer) => {
         //     console.log("Click en:", pointer.worldX, pointer.worldY);
         
@@ -126,6 +129,8 @@ class Bootloader extends Phaser.Scene {
             this.player.body.setSize(this.player.width * 0.7, this.player.height * 0.7);
             this.player.body.setOffset(3, 6);
         }
+
+        
        
         // SISTEMA DE ENEMIGOS
 
@@ -135,10 +140,31 @@ class Bootloader extends Phaser.Scene {
         this.enemigos.push(
             this.crearEnemigo(1351, 980, "slime", "idle_slime", 75, 150, 6).setData('id', 'slime_1') // ⭐ MODIFICADO: Añadir ID
         );
+        // ⭐ NUEVOS SLIMES (400, 450)
+        this.enemigos.push(
+            this.crearEnemigo(400, 450, "slime", "idle_slime", 75, 150, 6).setData('id', 'slime_2')
+        );
+        // ⭐ NUEVOS SLIMES (1600, 400)
+        this.enemigos.push(
+            this.crearEnemigo(1600, 400, "slime", "idle_slime", 75, 150, 6).setData('id', 'slime_3')
+        );
+        // ⭐ NUEVOS SLIMES (850, 1300)
+        this.enemigos.push(
+            this.crearEnemigo(850, 1300, "slime", "idle_slime", 75, 150, 6).setData('id', 'slime_4')
+        );
 
         this.enemigos.push(
             this.crearEnemigo(1059, 1089, "ojomMurcielago", "idle_ojoMurcielago", 75, 150, 6).setData('id', 'ojo_1') // ⭐ MODIFICADO: Añadir ID
         );
+        // ⭐ NUEVOS OJOS (400, 1100)
+        this.enemigos.push(
+            this.crearEnemigo(400, 1100, "ojomMurcielago", "idle_ojoMurcielago", 75, 150, 6).setData('id', 'ojo_2')
+        );
+        // ⭐ NUEVOS OJOS (1700, 1150)
+        this.enemigos.push(
+            this.crearEnemigo(1700, 1150, "ojomMurcielago", "idle_ojoMurcielago", 75, 150, 6).setData('id', 'ojo_3')
+        );
+
 
         //  OVERLAP PARA PAUSAR Y RUN EN LUGAR DE START
         this.physics.add.overlap(this.player, this.enemigos, (player, enemigo) => {
@@ -174,8 +200,11 @@ class Bootloader extends Phaser.Scene {
             });
         });
 
+
         // TOTEM VIDA → INVENTARIO (
+        
         this.cuboE = this.physics.add.sprite(1087, 1038, 'totemVida').setScale(1);
+        this.cuboE.setData("id", "totemVida_1");
         this.cuboE.setCollideWorldBounds(true);
         this.cuboE.play('idle_totemVida');
 
@@ -183,6 +212,10 @@ class Bootloader extends Phaser.Scene {
             this.cuboE.body.setSize(12, 14);
             this.cuboE.body.setOffset(6, 8);
         }
+        if (this.collectedTotems.includes("totemVida_1")) {
+            this.cuboE.destroy();
+        }
+        
 
         this.physics.add.collider(this.cuboE, wallColliders);
         this.physics.add.overlap(this.player, this.cuboE, this.collectCuboE, null, this);
@@ -214,6 +247,24 @@ class Bootloader extends Phaser.Scene {
         });
 
         this.playerSpeed = 100;
+        // ... (código existente del create) ...
+
+        // 1. Iniciar la escena del inventario en segundo plano (paralelo)
+        // Esto asegura que escuche el evento de recoger el tótem aunque no la veas.
+        if (!this.scene.isActive('InventarioScene')) {
+            this.scene.launch('InventarioScene');
+            this.scene.sleep('InventarioScene'); // La dormimos inmediatamente para que no estorbe
+        }
+
+        // 2. Tecla 'I' para ABRIR el inventario
+        this.input.keyboard.on('keydown-I', () => {
+            // Pausamos la escena de juego (EscenaDebug)
+            this.scene.pause();
+            // Despertamos la escena de inventario
+            this.scene.wake('InventarioScene');
+            // La traemos al frente por si acaso
+            this.scene.bringToTop('InventarioScene');
+        });
 
         // ANIMACIONES CABALLERO
         this.crearAnimacion("Caballero_Front", ["Caballero_Front0", "Caballero_Front1", "Caballero_Front2"]);
@@ -289,7 +340,7 @@ class Bootloader extends Phaser.Scene {
             repeat: -1
         });
     }
-
+s
     update() {
 
       
@@ -384,15 +435,29 @@ class Bootloader extends Phaser.Scene {
 
     // TÓTEM VIDA → INVENTARIO
     collectCuboE(player, cubo) {
-        //  Destruye el cubo por completo para que no reaparezca
-        cubo.destroy(); 
-        console.log("Player obtuvo un Tótem de Vida.");
-
+        const totemId = cubo.getData("id") || "totemVida_1";
+    
+        // Evitar recogerlo dos veces
+        if (this.collectedTotems.includes(totemId)) return;
+    
+        console.log("Player obtuvo un Tótem de Vida (ÚNICO)");
+    
+        this.collectedTotems.push(totemId);
+    
+        // Destruir tótem del mapa
+        cubo.destroy();
+    
+        // Enviar al inventario (no acumulable)
         this.game.events.emit("agregarAlInventario", {
-            tipo: "totemVida",
-            cantidad: 1
+            tipo: "totemVida"
         });
+    
+        // APLICAR BENEFICIO PERMANENTE (+10 HP máximo)
+        this.game.playerMaxHP = Math.floor((this.game.playerMaxHP || 100) * 1.1);
+
+        console.log("Nuevo máximo de vida:", this.game.playerMaxHP);
     }
+    
     
 }
 

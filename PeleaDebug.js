@@ -5,15 +5,36 @@ class PeleaDebug extends Phaser.Scene {
     }
 
     preload() {
-        this.load.image("CuboR", "assets/sprites/cubo rojo.png");
-
+        this.load.image("FondoPeleaUno", "assets/fondoPeleaUnuouoo.png");
+        this.load.atlas('slime', 'assets/Animaciones/Mago/slimea.png', 'assets/Animaciones/Mago/slimea.json');
+        this.load.atlas('ojomMurcielago', 'assets/Animaciones/Mago/ojoconcentracionanim.png', 'assets/Animaciones/Mago/ojoconcentracionanim.json'); // Asegurar precarga
+        this.load.image("Mago_Right0", "assets/Animaciones/Mago/MRight_0.png");
+        this.load.image("Caballero_Right0", "assets/Animaciones/Caballero/Right_0.png");
+        this.load.atlas('corazon','assets/Animaciones/Mago/vidasjuego.png','assets/Animaciones/Mago/vidasjuego.json') 
         //Audios
         this.load.audio("PeleaTutorial", "assets/audio/FFVIIPeleaTutorial.mp3");
 
     }
 
     // Inicializar la escena de batalla con todos los personajes, enemigos y UI
-    create() {
+    create(data) { 
+       
+        // === FONDO DE BATALLA ===
+        this.add.image(0, 0, "FondoPeleaUno").setOrigin(0, 0).setDepth(-10);
+        
+        //  Determinar el tipo de enemigo de la batalla
+        this.targetEnemyId = data && data.targetEnemy ? data.targetEnemy.getData('id') : null;
+        this.enemyType = 'slime'; 
+        
+        if (this.targetEnemyId) {
+            if (this.targetEnemyId.includes('ojo')) {
+                this.enemyType = 'ojomMurcielago';
+            } else if (this.targetEnemyId.includes('slime')) {
+                this.enemyType = 'slime';
+            }
+        }
+        
+
         // === ESTADO DEL JUEGO ===
 
         //Reproducir musica 
@@ -29,56 +50,87 @@ class PeleaDebug extends Phaser.Scene {
         };
 
         // === DEFINIR PERSONAJES DEL JUGADOR (PARTY) ===
-        // Array con Knight y Mage, incluyendo stats, habilidades y referencias a sprites
-        this.playerParty = [
-            {
-                name: 'Knight',
-                type: 'knight', // Tipo para identificar habilidades únicas
-                hp: 100,
-                maxHp: 100,
-                level: 1,
-                xp: 0, // Experiencia actual
-                xpToNextLevel: 100, // XP necesario para subir de nivel
-                sprite: null, // Referencia al sprite visual
-                normalAttackUses: 10, // Usos restantes del ataque normal
-                normalAttackMaxUses: 10,
-                strongAttackUses: 5, // Usos restantes del ataque fuerte
-                strongAttackMaxUses: 5
-            },
-            {
-                name: 'Mage',
-                type: 'mage',
-                hp: 80,
-                maxHp: 80,
-                level: 1,
-                xp: 0,
-                xpToNextLevel: 100,
-                sprite: null,
-                normalAttackUses: 10, // Hechizo poderoso
-                normalAttackMaxUses: 10,
-                healUses: 5, // Usos de curación del mago
-                healMaxUses: 5
-            }
-        ];
+     
+        //  Definir enemigos genéricamente
+        const baseHp = this.enemyType === 'slime' ? 30 : 40; // Ojo Murciélago tiene más HP
+        const enemyName = this.enemyType === 'slime' ? 'Slime' : 'Ojo Murciélago';
 
-        // === DEFINIR ENEMIGOS ===
-        // Array con 3 slimes que atacarán al jugador
         this.enemyParty = [
-            { name: 'Slime 1', hp: 30, maxHp: 30, sprite: null, dead: false },
-            { name: 'Slime 2', hp: 30, maxHp: 30, sprite: null, dead: false },
-            { name: 'Slime 3', hp: 30, maxHp: 30, sprite: null, dead: false }
+            { name: `${enemyName} 1`, hp: baseHp, maxHp: baseHp, sprite: null, dead: false },
+            { name: `${enemyName} 2`, hp: baseHp, maxHp: baseHp, sprite: null, dead: false },
+            { name: `${enemyName} 3`, hp: baseHp, maxHp: baseHp, sprite: null, dead: false }
         ];
 
         // === CREAR SPRITES DE PERSONAJES DEL JUGADOR ===
+        // === DEFINIR PERSONAJES DEL JUGADOR (PARTY) ===
+        this.playerParty = [
+            { name: 'Caballero', hp: 100, maxHp: 100, sprite: null, dead: false },
+            { name: 'Mago', hp: 80, maxHp: 80, sprite: null, dead: false }
+        ];
+
         // Lado izquierdo en dos filas (Knight en Y=300, Mage en Y=450)
-        this.playerParty[0].sprite = this.add.sprite(150, 300, 'CuboR').setScale(2);
-        this.playerParty[1].sprite = this.add.sprite(150, 450, 'CuboR').setScale(2).setTint(0xFF6600); // Mago naranja
+        this.playerParty[1].sprite = this.add.sprite(327, 458, 'Mago_Right0').setScale(7.5);
+        this.playerParty[0].sprite = this.add.sprite(442, 628, 'Caballero_Right0').setScale(8.5)
 
         // === CREAR SPRITES DE ENEMIGOS ===
-        // Lado derecho en tres filas, teñidos de azul para diferenciarlos
-        this.enemyParty[0].sprite = this.add.sprite(700, 200, 'CuboR').setScale(1.5).setTint(0x0000FF);
-        this.enemyParty[1].sprite = this.add.sprite(700, 350, 'CuboR').setScale(1.5).setTint(0x0000FF);
-        this.enemyParty[2].sprite = this.add.sprite(700, 500, 'CuboR').setScale(1.5).setTint(0x0000FF);
+        //  Crear animaciones genéricas (si no existen)
+        if (!this.anims.get('idle_slime')) {
+            this.anims.create({
+                key: 'idle_slime',
+                frames: this.anims.generateFrameNames('slime', { start: 0, end: 3 }),
+                frameRate: 8,
+                repeat: -1
+            });
+        }
+        if (!this.anims.get('idle_ojoMurcielago')) {
+            this.anims.create({
+                key: 'idle_ojoMurcielago',
+                frames: this.anims.generateFrameNames('ojomMurcielago', { start: 0, end: 3 }),
+                frameRate: 8,
+                repeat: -1
+            });
+        }
+      
+        // === CREAR ANIMACIÓN DEL CORAZÓN ===
+        if (!this.anims.get('corazonLatirAnim')) {
+            this.anims.create({
+                key: 'corazonLatirAnim', // 🟢 CLAVE DE LA ANIMACIÓN
+                // Usamos 'corazon', la clave que definiste en preload
+                frames: this.anims.generateFrameNames('corazon', { 
+                    // Nombres de los frames según tu JSON
+                    frames: [
+                        "cprarz 0.aseprite", 
+                        "cprarz 1.aseprite", 
+                        "cprarz 2.aseprite", 
+                        "cprarz 3.aseprite"
+                    ]
+                }),
+                frameRate: 8, // Velocidad de reproducción
+                repeat: -1 // Bucle infinito
+            });
+        }
+      
+        const animKey = this.enemyType === 'slime' ? 'idle_slime' : 'idle_ojoMurcielago';
+
+        
+
+        // Generación de sprites de enemigos usando this.enemyType
+        // Enemigo 1
+        this.enemyParty[0].sprite = this.add.sprite(955, 254, this.enemyType)
+            .setScale(5)
+            .setTint(0xDDDDFF)
+            .play(animKey);
+    
+        // Enemigo 2
+        this.enemyParty[1].sprite = this.add.sprite(1135, 376, this.enemyType)
+            .setScale(7)
+            .play(animKey);
+    
+        // Enemigo 3
+        this.enemyParty[2].sprite = this.add.sprite(1333, 544, this.enemyType)
+            .setScale(8)
+            .setTint(0xFF9999)
+            .play(animKey);
 
         // === CREAR BARRAS DE VIDA ===
         // Función que genera las barras de HP para jugador y enemigos
@@ -109,35 +161,54 @@ class PeleaDebug extends Phaser.Scene {
         this.selectedEnemyTarget = 0; // Enemigo seleccionado como objetivo
     }
 
-    // === CREAR BARRAS DE VIDA ===
-    // Genera las barras de HP visuales para todos los personajes (jugador y enemigos)
+
+
+
     createHPBars() {
-        const barY = 550; // Posición Y de todas las barras (parte inferior de la pantalla)
-        const barWidth = 100; // Ancho de cada barra
-        const barHeight = 15; // Alto de cada barra
-        const spacing = 150; // Separación horizontal entre barras
 
-        // === BARRAS DEL JUGADOR (lado izquierdo) ===
-        for (let i = 0; i < this.playerParty.length; i++) {
-            const x = 50 + i * spacing; // Posición X de cada barra
-            // Fondo gris de la barra (representa 0% HP)
-            this.playerParty[i].hpBarBg = this.add.rectangle(x, barY, barWidth, barHeight, 0x333333);
-            // Barra de HP verde que se anima cuando cambia HP
-            this.playerParty[i].hpBarFill = this.add.rectangle(x, barY, barWidth, barHeight, 0x00FF00);
-            // Etiqueta con nombre y nivel del personaje
-            this.add.text(x, barY - 30, `${this.playerParty[i].name} Lv${this.playerParty[i].level}`, { font: '12px Arial', fill: '#ffffff' }).setOrigin(0.5, 0.5);
-            // Texto con números de HP (ej: "100/100")
-            this.playerParty[i].hpText = this.add.text(x, barY, `${this.playerParty[i].hp}/${this.playerParty[i].maxHp}`, { font: '10px Arial', fill: '#000000' }).setOrigin(0.5, 0.5);
-        }
-
-        // === BARRAS DE ENEMIGOS (lado derecho) ===
-        for (let i = 0; i < this.enemyParty.length; i++) {
-            const x = 550 + i * spacing;
-            this.enemyParty[i].hpBarBg = this.add.rectangle(x, barY, barWidth, barHeight, 0x333333);
-            this.enemyParty[i].hpBarFill = this.add.rectangle(x, barY, barWidth, barHeight, 0x00FF00);
-            this.add.text(x, barY - 30, `${this.enemyParty[i].name}`, { font: '12px Arial', fill: '#ffffff' }).setOrigin(0.5, 0.5);
-            this.enemyParty[i].hpText = this.add.text(x, barY, `${this.enemyParty[i].hp}/${this.enemyParty[i].maxHp}`, { font: '10px Arial', fill: '#000000' }).setOrigin(0.5, 0.5);
-        }
+        // --- CONFIGURACIÓN GENERAL ---
+        const heartSpacing = 22;   // separación horizontal
+        const offsetY = -80;       // altura de los corazones
+        const HEART_VALUE = 10;    // cada corazón = 10 hp
+    
+        // ======== ALIADOS ========
+        this.playerParty.forEach(p => {
+            p.hearts = [];
+    
+            const totalHearts = Math.ceil(p.maxHp / HEART_VALUE);
+    
+            for (let i = 0; i < totalHearts; i++) {
+                const heart = this.add.sprite(
+                    p.sprite.x - 40 + i * heartSpacing,
+                    p.sprite.y + offsetY,
+                    "corazon"
+                )
+                .setScale(2)
+                .play('corazonLatirAnim');
+    
+                p.hearts.push(heart);
+            }
+        });
+    
+        // ======== ENEMIGOS ========
+        this.enemyParty.forEach(e => {
+            e.hearts = [];
+    
+            const totalHearts = Math.ceil(e.maxHp / HEART_VALUE);
+    
+            for (let i = 0; i < totalHearts; i++) {
+                const heart = this.add.sprite(
+                    e.sprite.x - 40 + i * heartSpacing,
+                    e.sprite.y + offsetY,
+                    "corazon"
+                )
+                .setScale(2)
+                .setTint(0x9933ff)   // ❤️‍🔥 MORADO PARA ENEMIGOS
+                .play('corazonLatirAnim');
+    
+                e.hearts.push(heart);
+            }
+        });
     }
 
     // === CREAR MENÚ DE ACCIONES ===
@@ -345,29 +416,91 @@ class PeleaDebug extends Phaser.Scene {
             return;
         }
 
-        // Calcular daño según el tipo de ataque
-        const damage = attack.type === 'strong' ? 30 : 15;
-        target.hp = Math.max(0, target.hp - damage); // Asegurar HP no sea negativo
+        // === ANIMAR SALTO PARABÓLICO DEL ATACANTE HACIA EL ENEMIGO ===
+        // Guardar posición original del atacante y cámara
+        const originalX = attacker.sprite.x;
+        const originalY = attacker.sprite.y;
+        
+        // Calcular posición junto al enemigo (más cerca pero sin superposición)
+        const targetX = target.sprite.x - 150; // Posicionarse a la izquierda del enemigo
+        const targetY = target.sprite.y; // Misma altura
+        
+        // Altura máxima del arco parabólico (peak del salto)
+        const maxHeight = 150;
+        
+        // Distancia total horizontal del salto
+        const distanceX = targetX - originalX;
+        const distanceY = targetY - originalY;
+        
+        // Duración del salto de ida (400ms)
+        const jumpDuration = 400;
 
-        // Decrementar el contador de usos del ataque
-        if (attack.type === 'normal') attacker.normalAttackUses--;
-        else if (attack.type === 'strong') attacker.strongAttackUses--;
+        // === SALTO DE IDA CON PARÁBOLA Y CÁMARA ===
+        this.tweens.add({
+            targets: { progress: 0 },
+            progress: 1,
+            duration: jumpDuration,
+            ease: 'Linear',
+            onUpdate: (tween) => {
+                const t = tween.progress; // Valor de 0 a 1
+                
+                // Ecuación parabólica para altura: -4 * maxHeight * t * (t - 1)
+                const heightOffset = 4 * maxHeight * t * (t - 1);
+                
+                // Movimiento lineal horizontal y vertical del atacante
+                attacker.sprite.x = originalX + distanceX * t;
+                attacker.sprite.y = originalY + distanceY * t + heightOffset;
+                
+            },
+            onComplete: () => {
+                // === ESPERAR 1 SEGUNDO ===
+                this.time.delayedCall(1000, () => {
+                    // === EJECUTAR ATAQUE ===
+                    // Calcular daño según el tipo de ataque
+                    const damage = attack.type === 'strong' ? 30 : 15;
+                    target.hp = Math.max(0, target.hp - damage); // Asegurar HP no sea negativo
 
-        // Mostrar número de daño encima del enemigo
-        this.add.text(target.sprite.x, target.sprite.y - 40, `-${damage}`, {
-            font: '20px Arial',
-            fill: '#FF0000'
-        }).setOrigin(0.5, 0.5).setDepth(10).setData('floatingText', true);
+                    // Decrementar el contador de usos del ataque
+                    if (attack.type === 'normal') attacker.normalAttackUses--;
+                    else if (attack.type === 'strong') attacker.strongAttackUses--;
 
-        // Marcar enemigo como muerto si su HP llegó a 0
-        if (target.hp <= 0) target.dead = true;
+                    // Mostrar número de daño encima del enemigo
+                    this.add.text(target.sprite.x, target.sprite.y - 40, `-${damage}`, {
+                        font: '20px Arial',
+                        fill: '#FF0000'
+                    }).setOrigin(0.5, 0.5).setDepth(10).setData('floatingText', true);
 
-        // Actualizar visualización de barras de vida
-        this.updateHPDisplay();
+                    // Marcar enemigo como muerto si su HP llegó a 0
+                    if (target.hp <= 0) target.dead = true;
 
-        // Esperar 1 segundo y terminar turno
-        this.time.delayedCall(1000, () => {
-            this.endPlayerTurn();
+                    // Actualizar visualización de barras de vida
+                    this.updateHPDisplay(target);
+
+                    // === SALTO DE REGRESO CON PARÁBOLA Y CÁMARA ===
+                    this.tweens.add({
+                        targets: { progress: 0 },
+                        progress: 1,
+                        duration: jumpDuration,
+                        ease: 'Linear',
+                        onUpdate: (tween) => {
+                            const t = tween.progress; // Valor de 0 a 1
+                            
+                            // Ecuación parabólica para altura
+                            const heightOffset = 4 * maxHeight * t * (t - 1);
+                            
+                            // Movimiento lineal de regreso
+                            attacker.sprite.x = targetX - distanceX * t;
+                            attacker.sprite.y = targetY - distanceY * t + heightOffset;
+                            
+                        },
+                        onComplete: () => {
+                            
+                            // Terminar turno después de regresar
+                            this.endPlayerTurn();
+                        }
+                    });
+                });
+            }
         });
     }
 
@@ -435,7 +568,7 @@ class PeleaDebug extends Phaser.Scene {
         }).setOrigin(0.5, 0.5).setDepth(10).setData('floatingText', true);
 
         // Actualizar barras de vida
-        this.updateHPDisplay();
+        this.updateHPDisplay(target);
 
         // Esperar 1 segundo y terminar turno
         this.time.delayedCall(1000, () => {
@@ -529,7 +662,9 @@ class PeleaDebug extends Phaser.Scene {
 
         // Seleccionar un enemigo aleatorio para atacar
         const attacker = Phaser.Utils.Array.GetRandom(aliveEnemies);
-        const damage = 10; // Daño estándar de enemigos
+        //  Daño del enemigo basado en el tipo
+        const damage = this.enemyType === 'slime' ? 10 : 15; 
+        
         // El objetivo es siempre el personaje controlado actualmente por el jugador
         const target = this.playerParty[this.gameState.currentCharacter];
         target.hp = Math.max(0, target.hp - damage);
@@ -541,7 +676,7 @@ class PeleaDebug extends Phaser.Scene {
         }).setOrigin(0.5, 0.5).setDepth(10).setData('floatingText', true);
 
         // Actualizar barras de vida
-        this.updateHPDisplay();
+        this.updateHPDisplay(target);
 
         // Verificar si el personaje del jugador fue derrotado
         if (target.hp <= 0) {
@@ -577,27 +712,31 @@ class PeleaDebug extends Phaser.Scene {
     // === ACTUALIZAR BARRAS DE VIDA ===
     // Sincroniza todas las barras de vida visual con los datos de HP actuales
     // Escala las barras según (hp/maxHp) y actualiza el texto de HP mostrado
-    updateHPDisplay() {
-        // Actualizar barras de aliados del jugador
-        this.playerParty.forEach(p => {
-            // Calcular proporción de vida (0 a 1)
-            const percent = p.hp / p.maxHp;
-            // Escalar la barra de vida según la proporción
-            p.hpBarFill.setScale(percent, 1);
-            // Actualizar texto mostrando HP actual / máximo
-            p.hpText.setText(`${p.hp}/${p.maxHp}`);
-        });
+    updateHPDisplay(entity) {
 
-        // Actualizar barras de enemigos
-        this.enemyParty.forEach(e => {
-            // Calcular proporción de vida
-            const percent = e.hp / e.maxHp;
-            // Escalar la barra de vida
-            e.hpBarFill.setScale(percent, 1);
-            // Actualizar texto de HP
-            e.hpText.setText(`${e.hp}/${e.maxHp}`);
+        const HEART_VALUE = 10;
+    
+        const totalHearts = Math.ceil(entity.maxHp / HEART_VALUE);
+        const heartsToShow = Math.ceil(entity.hp / HEART_VALUE);
+    
+        entity.hearts.forEach((heart, index) => {
+    
+            const hpForThisHeart = entity.hp - (index * HEART_VALUE);
+    
+            if (hpForThisHeart >= HEART_VALUE) {
+                heart.setAlpha(1); // lleno
+            } 
+            else if (hpForThisHeart <= 0) {
+                heart.setAlpha(0); // desaparece
+            }
+            else {
+                // corazón incompleto → transparencia proporcional
+                const percent = hpForThisHeart / HEART_VALUE;
+                heart.setAlpha(percent);
+            }
         });
     }
+    
 
     // === MOSTRAR MENSAJE TEMPORAL ===
     // Muestra un mensaje de error o información durante 1.5 segundos
@@ -668,7 +807,10 @@ class PeleaDebug extends Phaser.Scene {
 
         // Esperar a que el jugador presione ENTER para volver
         this.input.keyboard.once('keydown-ENTER', () => {
-            this.scene.start('EscenaDebug');
+             // ⭐ MODIFICADO: Notificar a EscenaDebug y pasar el ID del enemigo derrotado
+            this.scene.get('EscenaDebug').events.emit('victory', {
+                targetEnemyId: this.targetEnemyId
+            });
         });
     }
 
@@ -716,9 +858,15 @@ class PeleaDebug extends Phaser.Scene {
 
         // Esperar a que el jugador presione ENTER para volver
         this.input.keyboard.once('keydown-ENTER', () => {
-            this.scene.start('EscenaDebug');
+             //  Notificar a EscenaDebug, sin pasar ID de enemigo para destruir (Derrota)
+            this.scene.get('EscenaDebug').events.emit('victory', {
+                targetEnemyId: null 
+            });
         });
     }
+
+
+    
 }
 
 export default PeleaDebug;

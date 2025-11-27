@@ -358,10 +358,10 @@ class Bootloader extends Phaser.Scene{
         this.BotonNuevaPartida = this.add.image(this.BotonInicio.x, this.BotonInicio.y, 'BotonNuevaPartida');
         this.BotonContinuar = this.add.image(this.BotonInicio.x, this.BotonInicio.y, 'BotonContinuar');
         // mismo escalado inicial que el resto pero empezamos con scale 0 para 'extender'
-    this.BotonNuevaPartida.setScale(0);
-    this.BotonContinuar.setScale(0);
-    this.BotonNuevaPartida.setAlpha(0);
-    this.BotonContinuar.setAlpha(0);
+        this.BotonNuevaPartida.setScale(0);
+        this.BotonContinuar.setScale(0);
+        this.BotonNuevaPartida.setAlpha(0);
+        this.BotonContinuar.setAlpha(0);
         this.BotonNuevaPartida.setDepth(11);
         this.BotonContinuar.setDepth(11);
         this.BotonNuevaPartida.setInteractive();
