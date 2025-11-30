@@ -1,0 +1,40 @@
+{
+    "anims": [
+        {
+            "key": "golpenormal",
+            "type": "frames",
+            "repeat": -1,
+            "frameRate": 10,
+            "frames": [
+                {
+                    "key": "golpe_debil",
+                    "frame": "golpedebil1"
+                },
+                {
+                    "key": "golpe_debil",
+                    "frame": "golpedebil2"
+                },
+                {
+                    "key": "golpe_debil",
+                    "frame": "golpedebil3"
+                },
+                {
+                    "key": "golpe_debil",
+                    "frame": "golpedebil4"
+                },
+                {
+                    "key": "golpe_debil",
+                    "frame": "golpedebil5"
+                },
+                {
+                    "key": "golpe_debil",
+                    "frame": "golpedebil6"
+                },
+                {
+                    "key": "golpe_debil",
+                    "frame": "golpedebil7"
+                }
+            ]
+        }
+    ]
+}
