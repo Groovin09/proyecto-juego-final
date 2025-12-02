@@ -56,6 +56,10 @@ class Bootloader extends Phaser.Scene {
         this.load.image("Paredes", "assets/Tiles/Paredes.png");
         this.load.image("Escaleras", "assets/Tiles/Estructuras piedra.png");
         this.load.image("Objetos", "assets/Tiles/Estructuras.png");
+        // Poción de vida (sprite en assets/sprites/objetos/fb278.png)
+        this.load.image('potion', 'assets/sprites/objetos/fb278.png');
+        // Poción de maná (sprite en assets/sprites/objetos/fb293.png)
+        this.load.image('manaPotion', 'assets/sprites/objetos/fb293.png');
         this.load.image("Plantas", "assets/Tiles/Plantas.png");
         this.load.image("Estructuras", "assets/Tiles/Estructuras piedra.png");
 
@@ -335,6 +339,26 @@ class Bootloader extends Phaser.Scene {
         this.cuboE.speed = 0;
         this.cuboE.minFollowDist = 0;
 
+        // Poción de vida en el mapa (acumulable)
+        this.potion = this.physics.add.sprite(1000, 1100, 'potion').setScale(1.2);
+        this.potion.setData('id', 'potion_1');
+        if (this.potion.body) {
+            this.potion.body.setSize(this.potion.width * 0.6, this.potion.height * 0.6);
+            this.potion.body.setOffset(4, 4);
+        }
+        this.physics.add.collider(this.potion, wallColliders);
+        this.physics.add.overlap(this.player, this.potion, this.collectPotion, null, this);
+
+        // Poción de maná en el mapa (acumulable)
+        this.manaPotion = this.physics.add.sprite(1040, 1100, 'manaPotion').setScale(1.2);
+        this.manaPotion.setData('id', 'manaPotion_1');
+        if (this.manaPotion.body) {
+            this.manaPotion.body.setSize(this.manaPotion.width * 0.6, this.manaPotion.height * 0.6);
+            this.manaPotion.body.setOffset(4, 4);
+        }
+        this.physics.add.collider(this.manaPotion, wallColliders);
+        this.physics.add.overlap(this.player, this.manaPotion, this.collectManaPotion, null, this);
+
         // MAGO SEGUIDOR 
         this.cuboSeguidor = this.physics.add.sprite(1400, 700, "Mago_Front0");
         this.cuboSeguidor.setScale(1.1);
@@ -397,6 +421,9 @@ class Bootloader extends Phaser.Scene {
         this.crearAnimacion("Mago_Back", ["Mago_Back0", "Mago_Back1", "Mago_Back2"]);
         this.crearAnimacion("Mago_Left", ["Mago_Left0", "Mago_Left1", "Mago_Left2"]);
         this.crearAnimacion("Mago_Right", ["Mago_Right0", "Mago_Right1", "Mago_Right2"]);
+
+        // Iniciar el ciclo día/noche
+        this.setupDayNightCycle();
     }
 
  
@@ -460,10 +487,8 @@ class Bootloader extends Phaser.Scene {
             repeat: -1
         });
     }
-s
     update() {
 
-      
         // IA: TODOS LOS ENEMIGOS SIGUEN AL JUGADOR
       
         for (const enemigo of this.enemigos) {
@@ -546,6 +571,76 @@ s
         this.scene.run("PeleaDebug", { from: "EscenaDebug" });
     }
 
+    // === CICLO DÍA/NOCHE ===
+    setupDayNightCycle() {
+        console.log('setupDayNightCycle llamado');
+        this.isNight = false;
+        const CYCLE_DURATION = 60000; // 1 minuto
+
+        // Crear overlay azul para la noche (usando coordenadas fijas en pantalla)
+        console.log('Creando overlay. Ancho pantalla:', this.scale.width, 'Alto:', this.scale.height);
+        this.nightOverlay = this.add.rectangle(
+            this.scale.width / 2,
+            this.scale.height / 2,
+            this.scale.width,
+            this.scale.height,
+            0x0033AA,
+            0
+        );
+        console.log('Overlay creado:', this.nightOverlay);
+        this.nightOverlay.setScrollFactor(0);
+        this.nightOverlay.setDepth(50);
+
+        // Texto indicador (debug)
+        this.timeOfDayText = this.add.text(20, 20, 'DÍA', {
+            font: '16px Arial',
+            fill: '#FFFF00'
+        }).setScrollFactor(0).setDepth(100);
+        console.log('Texto creado:', this.timeOfDayText);
+
+        console.log('🌞 Ciclo día/noche iniciado (primero: DÍA)');
+
+        // Iniciar ciclo cada 1 minuto
+        this.time.addEvent({
+            delay: CYCLE_DURATION,
+            callback: () => this.toggleDayNight(),
+            loop: true
+        });
+    }
+
+    toggleDayNight() {
+        console.log('toggleDayNight llamado. isNight antes:', this.isNight);
+        this.isNight = !this.isNight;
+        console.log('isNight después:', this.isNight);
+        if (this.isNight) {
+            console.log('Iniciando fade IN a noche');
+            // Fade in gradual a noche (3 segundos)
+            this.tweens.add({
+                targets: this.nightOverlay,
+                alpha: 0.3,
+                duration: 3000,
+                ease: 'Linear',
+                onStart: () => {
+                    this.timeOfDayText.setText('NOCHE');
+                    console.log('🌙 Ha caído la noche');
+                }
+            });
+        } else {
+            console.log('Iniciando fade OUT a día');
+            // Fade out gradual a día (3 segundos)
+            this.tweens.add({
+                targets: this.nightOverlay,
+                alpha: 0,
+                duration: 3000,
+                ease: 'Linear',
+                onStart: () => {
+                    this.timeOfDayText.setText('DÍA');
+                    console.log('☀️ Ha amanecido');
+                }
+            });
+        }
+    }
+
     collectCuboA(player, cubo) {
         cubo.disableBody(true, true);
         console.log("Player colisionó con CuboA — iniciando PeleaDebug");
@@ -577,10 +672,7 @@ s
         playerParty.forEach(character => {
             if (Number.isFinite(character.maxHp)) {
                 character.maxHp = Math.max(1, Math.floor(character.maxHp * 1.1));
-                // Restaurar HP al máximo si el personaje está vivo
-                if (!character.dead) {
-                    character.hp = character.maxHp;
-                }
+                // No curar, solo aumentar maxHp
             }
         });
 
@@ -589,8 +681,36 @@ s
 
         console.log("Nuevo máximo de vida:", playerParty.map(c => `${c.name}: ${c.maxHp}`));
     }
-    
-    
+
+    // POCIÓN DE VIDA → INVENTARIO (acumulable)
+    collectPotion(player, potion) {
+        const potionId = potion.getData('id') || 'potion_1';
+
+        console.log('Player recogió una Poción de Vida');
+
+        // Destruir la poción del mapa
+        potion.destroy();
+
+        // Enviar al inventario (acumulable, cantidad)
+        this.game.events.emit('agregarAlInventario', {
+            tipo: 'potion',
+            cantidad: 1
+        });
+
+        // No efecto inmediato sobre stats; uso desde inventario o en batalla
+    }
+
+    // RECOGER POCIÓN DE MANÁ → INVENTARIO (acumulable)
+    collectManaPotion(player, manaPotion) {
+        const manaId = manaPotion.getData('id') || 'manaPotion_1';
+        console.log('Player recogió una Poción de Maná');
+        manaPotion.destroy();
+        this.game.events.emit('agregarAlInventario', {
+            tipo: 'manaPotion',
+            cantidad: 1
+        });
+    }
+
 }
 
 export default Bootloader;

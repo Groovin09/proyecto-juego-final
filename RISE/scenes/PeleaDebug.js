@@ -301,152 +301,164 @@ class PeleaDebug extends Phaser.Scene {
     createHPBars() {
 
         // --- CONFIGURACIÓN GENERAL ---
-        const heartSpacing = 22;   // separación horizontal
-        const offsetY = -80;       // altura de los corazones
-        const HEART_VALUE = 10;    // cada corazón = 10 hp
-    
+        const offsetY = -100;       // altura de la barra respecto al sprite
+        const barWidth = 90;       // ancho total de la barra
+        const barHeight = 12;      // alto de la barra
+
         // ======== ALIADOS ========
         this.playerParty.forEach(p => {
-            p.hearts = [];
-    
-            const totalHearts = Math.ceil(p.maxHp / HEART_VALUE);
-    
-            for (let i = 0; i < totalHearts; i++) {
-                const heart = this.add.sprite(
-                    p.sprite.x - 40 + i * heartSpacing,
-                    p.sprite.y + offsetY,
-                    "corazon"
-                )
-                .setScale(2)
-                .play('corazonLatirAnim');
-    
-                p.hearts.push(heart);
-            }
+            // Crear un contenedor para la barra de vida
+            const container = this.add.container(p.sprite.x, p.sprite.y + offsetY);
+
+            // Fondo (gris)
+            const bg = this.add.rectangle(-barWidth / 2, 0, barWidth, barHeight, 0x333333).setOrigin(0, 0.5);
+            // Foreground (verde) que representará la vida restante
+            const fgWidth = Math.max(0, Math.floor((p.hp / p.maxHp) * barWidth));
+            const fg = this.add.rectangle(-barWidth / 2, 0, fgWidth, barHeight, 0x00cc00).setOrigin(0, 0.5);
+
+            // Texto pequeño con HP actual
+            const hpText = this.add.text(0, -barHeight - 6, `${p.hp}/${p.maxHp}`, { font: '12px Arial', fill: '#ffffff' }).setOrigin(0.5, 0.5);
+
+            container.add([bg, fg, hpText]);
+
+            // Guardar referencias para futuras actualizaciones y animaciones
+            p.hpBar = { container, bg, fg, hpText, width: barWidth, height: barHeight, offsetY };
         });
-    
+
         // ======== ENEMIGOS ========
         this.enemyParty.forEach(e => {
-            e.hearts = [];
-    
-            const totalHearts = Math.ceil(e.maxHp / HEART_VALUE);
-    
-            for (let i = 0; i < totalHearts; i++) {
-                const heart = this.add.sprite(
-                    e.sprite.x - 40 + i * heartSpacing,
-                    e.sprite.y + offsetY,
-                    "corazon"
-                )
-                .setScale(2)
-                .setTint(0x9933ff)   // ❤️‍🔥 MORADO PARA ENEMIGOS
-                .play('corazonLatirAnim');
-    
-                e.hearts.push(heart);
-            }
+            const container = this.add.container(e.sprite.x, e.sprite.y + offsetY);
+
+            const bg = this.add.rectangle(-barWidth / 2, 0, barWidth, barHeight, 0x333333).setOrigin(0, 0.5);
+            const fgWidth = Math.max(0, Math.floor((e.hp / e.maxHp) * barWidth));
+            // Color distinto para enemigos
+            const fg = this.add.rectangle(-barWidth / 2, 0, fgWidth, barHeight, 0x9933ff).setOrigin(0, 0.5);
+
+            const hpText = this.add.text(0, -barHeight - 6, `${e.hp}/${e.maxHp}`, { font: '12px Arial', fill: '#ffffff' }).setOrigin(0.5, 0.5);
+
+            container.add([bg, fg, hpText]);
+
+            e.hpBar = { container, bg, fg, hpText, width: barWidth, height: barHeight, offsetY };
         });
     }
 
-    // === CREAR MENÚ DE ACCIONES ===
-    // Genera el menú principal con las opciones: ATTACK, ITEMS, CHANGE
+    // === CREAR MENÚ DE ACCIONES (MOUSE-DRIVEN) ===
+    // Crea botones interactivos en la esquina inferior derecha del personaje actual
     createMenuUI() {
-        // Define las 3 opciones disponibles en cada turno
-        this.menuOptions = [
-            { text: 'ATTACK', action: 'attack' }, // Atacar al enemigo
-            { text: 'ITEMS', action: 'items' },   // Usar objetos
-            { text: 'CHANGE', action: 'change' }  // Cambiar de personaje
-        ];
+        // Contenedor para el menú principal y submenús
+        this.menuContainer = this.add.container(0, 0);
+        this.menuContainer.setDepth(100);
 
-        this.menuTexts = []; // Array para guardar referencias a los textos del menú
-        const menuStartY = 150; // Posición Y del primer elemento
-        const menuSpacing = 50; // Espaciado vertical entre opciones
+        // Posición relativa a personaje actual (inferior-derecha)
+        this.updateMenuPosition();
 
-        // Crear cada opción del menú
-        for (let i = 0; i < this.menuOptions.length; i++) {
-            const text = this.add.text(425, menuStartY + i * menuSpacing, this.menuOptions[i].text, {
-                font: '20px Arial',
-                fill: '#ffffff'
-            }).setOrigin(0.5, 0.5).setDepth(10);
-            text.setData('menuIndex', i); // Guardar el índice para identificarlo después
-            this.menuTexts.push(text);
-        }
-
-        // Destacar la primera opción del menú
-        this.updateMenuHighlight();
-
-        // Texto que muestra de quién es el turno (ej: "Knight's Turn")
-        this.turnInfoText = this.add.text(425, 120, `${this.playerParty[this.gameState.currentCharacter].name}'s Turn`, {
-            font: '16px Arial',
-            fill: '#ffffff'
-        }).setOrigin(0.5, 0.5).setDepth(10);
+        // Mostrar menú principal al inicio del turno
+        this.showMainMenu();
     }
 
-    // === ACTUALIZAR RESALTADO DEL MENÚ ===
-    // Cambia el color y tamaño del texto según cuál está seleccionado
+    updateMenuPosition() {
+        const current = this.playerParty[this.gameState.currentCharacter];
+        if (current && current.sprite) {
+            // Posicionar menú 150px a la derecha y 120px abajo del personaje
+            this.menuXOffset = current.sprite.x - 150;
+            this.menuYOffset = current.sprite.y + 120;
+        }
+    }
+
+    // Actualiza el resaltado del menú principal (para compatibilidad con llamadas antiguas)
     updateMenuHighlight() {
-        this.menuTexts.forEach((text, index) => {
-            if (index === this.selectedMenuOption) {
-                text.setFill('#FFFF00'); // Amarillo para la selección
-                text.setFontSize(24); // Más grande
-            } else {
-                text.setFill('#ffffff'); // Blanco normal
-                text.setFontSize(20);
+        if (!this.menuContainer) return;
+        // Asegurar que selectedMenuOption sea un índice válido
+        const idx = (typeof this.selectedMenuOption === 'number') ? this.selectedMenuOption : 0;
+        const children = this.menuContainer.list || [];
+        children.forEach((child, i) => {
+            // Aplicar ligero scale para resaltar la opción seleccionada
+            if (typeof child.setScale === 'function') {
+                this.tweens.add({
+                    targets: child,
+                    scale: (i === idx) ? 1.05 : 1,
+                    duration: 120,
+                    ease: 'Linear'
+                });
+            }
+            // Si el child es un container con a text child, cambiar color del texto
+            if (child.list && child.list.length) {
+                child.list.forEach(inner => {
+                    if (inner.type === 'Text') {
+                        if (typeof inner.setStyle === 'function') {
+                            inner.setStyle({ color: (i === idx) ? '#ffff00' : '#ffffff' });
+                        } else if (typeof inner.setColor === 'function') {
+                            inner.setColor((i === idx) ? '#ffff00' : '#ffffff');
+                        }
+                    }
+                });
             }
         });
     }
 
-    // === LOOP PRINCIPAL DE ACTUALIZACIÓN ===
-    // Se ejecuta cada frame para procesar entrada del jugador
-    update() {
-        if (this.gameState.battleOver) return; // Si la batalla terminó, no hacer nada
-
-        // Procesar turno del jugador (menú y acciones)
-        if (this.gameState.currentTurn === 'player') {
-            this.handlePlayerTurn();
+    showMainMenu() {
+        // Asegurar que el contenedor esté visible y completamente opaco
+        if (this.menuContainer) {
+            this.menuContainer.setVisible(true);
+            this.menuContainer.setAlpha(1);
+            this.menuContainer.removeAll(true);
         }
+        this.currentMenu = 'main';
+        this.updateMenuPosition();
+
+        const buttonHeight = 50;
+        const buttonWidth = 120;
+        let yOffset = 0;
+        const buttons = [];
+
+        // Botón ATTACK
+        const attackBtn = this.createMenuButton('ATTACK', 0, yOffset, buttonWidth, buttonHeight, () => this.showAttackSubmenu());
+        attackBtn.setAlpha(0);
+        attackBtn.setScale(0.8);
+        this.menuContainer.add(attackBtn);
+        buttons.push(attackBtn);
+        yOffset += buttonHeight + 10;
+
+        // Botón ITEMS
+        const itemsBtn = this.createMenuButton('ITEMS', 0, yOffset, buttonWidth, buttonHeight, () => this.showItemsSubmenu());
+        itemsBtn.setAlpha(0);
+        itemsBtn.setScale(0.8);
+        this.menuContainer.add(itemsBtn);
+        buttons.push(itemsBtn);
+        yOffset += buttonHeight + 10;
+
+        // Botón CHANGE (en línea separada)
+        const changeBtn = this.createMenuButton('CHANGE', 0, yOffset, buttonWidth, buttonHeight, () => this.changeCharacter());
+        changeBtn.setAlpha(0);
+        changeBtn.setScale(0.8);
+        this.menuContainer.add(changeBtn);
+        buttons.push(changeBtn);
+
+        // Animar entrada de botones con stagger
+        buttons.forEach((btn, idx) => {
+            this.tweens.add({
+                targets: btn,
+                alpha: 1,
+                scale: 1,
+                duration: 300,
+                delay: idx * 100,
+                ease: 'Back.out'
+            });
+        });
     }
 
-    // === MANEJAR TURNO DEL JUGADOR ===
-    // Procesa la entrada del teclado para navegar y ejecutar acciones
-    handlePlayerTurn() {
-        // Navegación arriba (W) - mover selección hacia arriba
-        if (Phaser.Input.Keyboard.JustDown(this.keys.W)) {
-            this.selectedMenuOption = (this.selectedMenuOption - 1 + this.menuOptions.length) % this.menuOptions.length;
-            this.updateMenuHighlight();
-        }
-        // Navegación abajo (S) - mover selección hacia abajo
-        if (Phaser.Input.Keyboard.JustDown(this.keys.S)) {
-            this.selectedMenuOption = (this.selectedMenuOption + 1) % this.menuOptions.length;
-            this.updateMenuHighlight();
-        }
+    showAttackSubmenu() {
+        // Animar salida del menú anterior
+        this.menuContainer.removeAll(true);
+        this.currentMenu = 'attack';
 
-        // Confirmar selección (ENTER)
-        if (Phaser.Input.Keyboard.JustDown(this.keys.Enter)) {
-            const action = this.menuOptions[this.selectedMenuOption].action;
-
-            // Ejecutar la acción seleccionada
-            if (action === 'attack') {
-                this.showAttackMenu(); // Mostrar opciones de ataque
-            } else if (action === 'items') {
-                this.showItemsMenu(); // Mostrar items disponibles
-            } else if (action === 'change') {
-                this.changeCharacter(); // Cambiar de personaje
-            }
-        }
-    }
-
-    showAttackMenu() {
         const current = this.playerParty[this.gameState.currentCharacter];
+        const buttonHeight = 50;
+        const buttonWidth = 150;
+        let yOffset = 0;
+        const buttons = [];
 
-        // Ocultar menú principal mientras se muestran opciones de ataque
-        this.menuTexts.forEach(t => t.setVisible(false));
-        this.turnInfoText.setVisible(false);
-
-        // Mostrar instrucciones para seleccionar ataque
-        this.add.text(425, 200, 'Select Attack: Press 1 or 2', {
-            font: '16px Arial',
-            fill: '#FFFF00'
-        }).setOrigin(0.5, 0.5).setDepth(10).setData('tempMenu', true);
-
-        // Definir ataques según el tipo de personaje activo
+        // Definir ataques según el tipo de personaje
         const attacks = current.type === 'knight'
             ? [
                 { name: `Normal (${current.normalAttackUses}/${current.maxNormalUses})`, type: 'normal', damage: current.attack },
@@ -457,87 +469,323 @@ class PeleaDebug extends Phaser.Scene {
                 { name: `Heal (${current.healUses}/${current.maxHealUses})`, type: 'heal', healing: 40 }
             ];
 
-        // Mostrar cada opción de ataque con su número para seleccionarla
-        for (let i = 0; i < attacks.length; i++) {
-            this.add.text(425, 240 + i * 40, `${i + 1}: ${attacks[i].name}`, {
-                font: '14px Arial',
-                fill: '#ffffff'
-            }).setOrigin(0.5, 0.5).setDepth(10).setData('tempMenu', true);
-        }
-
-        // Manejar la selección del ataque (presionar 1 o 2)
-        const handleAttackSelection = (event) => {
-            const choice = parseInt(event.key);
-            if (choice === 1 || choice === 2) {
-                this.input.keyboard.off('keydown', handleAttackSelection);
-                this.removeTemporaryMenus();
-
-                // Si es curación, permite seleccionar aliado a curar
-                if (attacks[choice - 1].type === 'heal') {
+        // Crear botones de ataque con animación
+        attacks.forEach((attack, idx) => {
+            const btn = this.createMenuButton(attack.name, 0, yOffset, buttonWidth, buttonHeight, () => {
+                if (attack.type === 'heal') {
                     this.selectCharacterToHeal();
                 } else {
-                    // Si es ataque, permite seleccionar enemigo objetivo
-                    this.selectEnemyTarget(attacks[choice - 1]);
+                    this.selectEnemyTarget(attack);
                 }
-            }
-        };
+            });
+            btn.setAlpha(0);
+            btn.setScale(0.8);
+            this.menuContainer.add(btn);
+            buttons.push(btn);
+            yOffset += buttonHeight + 10;
+        });
 
-        this.input.keyboard.on('keydown', handleAttackSelection);
+        // Botón BACK
+        const backBtn = this.createMenuButton('BACK', 0, yOffset, buttonWidth, buttonHeight, () => this.showMainMenu());
+        backBtn.setAlpha(0);
+        backBtn.setScale(0.8);
+        this.menuContainer.add(backBtn);
+        buttons.push(backBtn);
+
+        // Animar entrada de botones con stagger
+        buttons.forEach((btn, idx) => {
+            this.tweens.add({
+                targets: btn,
+                alpha: 1,
+                scale: 1,
+                duration: 300,
+                delay: idx * 80,
+                ease: 'Back.out'
+            });
+        });
     }
+
+    showItemsSubmenu() {
+        this.menuContainer.removeAll(true);
+        this.currentMenu = 'items';
+
+        const inventarioScene = this.scene.get('InventarioScene');
+        const inventario = inventarioScene ? (inventarioScene.inventario || {}) : {};
+        const buttonHeight = 50;
+        const buttonWidth = 150;
+        let yOffset = 0;
+        const buttons = [];
+
+        // Listar items disponibles
+        let hasItems = false;
+        if (inventario.potion && inventario.potion > 0) {
+            hasItems = true;
+            const btn = this.createMenuButton(`Poción (${inventario.potion})`, 0, yOffset, buttonWidth, buttonHeight, () => {
+                // Usar la poción directamente sobre el personaje actualmente seleccionado
+                const current = this.playerParty[this.gameState.currentCharacter];
+                if (!current) return;
+                // Si no necesita curación, mostrar mensaje y volver al menú
+                if (current.hp >= current.maxHp) {
+                    this.showMessage('No necesita curación!');
+                    this.time.delayedCall(1000, () => this.showMainMenu());
+                    return;
+                }
+
+                // Cerrar menú con pequeña animación y usar la poción
+                this.removeTemporaryMenus();
+                if (this.menuContainer) {
+                    this.tweens.add({
+                        targets: this.menuContainer,
+                        alpha: 0,
+                        duration: 200,
+                        ease: 'Linear',
+                        onComplete: () => {
+                            this.menuContainer.setVisible(false);
+                            this.usePotion(current);
+                        }
+                    });
+                } else {
+                    this.usePotion(current);
+                }
+            });
+            btn.setAlpha(0);
+            btn.setScale(0.8);
+            this.menuContainer.add(btn);
+            buttons.push(btn);
+            yOffset += buttonHeight + 10;
+        }
+
+        // Poción de maná (otorga +3 usos al Mago hasta su máximo)
+        if (inventario.manaPotion && inventario.manaPotion > 0) {
+            hasItems = true;
+            const btnMana = this.createMenuButton(`Maná (${inventario.manaPotion})`, 0, yOffset, buttonWidth, buttonHeight, () => {
+                // Encontrar al Mago en la party
+                const mage = this.playerParty.find(p => p.type === 'mage' || (p.name && p.name.toLowerCase().includes('mago')));
+                if (!mage) {
+                    this.showMessage('No hay Mago en el grupo!');
+                    this.time.delayedCall(1000, () => this.showMainMenu());
+                    return;
+                }
+
+                const manaAmount = (this.scene.get('InventarioScene') && this.scene.get('InventarioScene').itemsData.manaPotion && this.scene.get('InventarioScene').itemsData.manaPotion.manaAmount) ? this.scene.get('InventarioScene').itemsData.manaPotion.manaAmount : 3;
+                const currentUses = Number.isFinite(mage.normalAttackUses) ? mage.normalAttackUses : 0;
+                const maxUses = Number.isFinite(mage.maxNormalUses) ? mage.maxNormalUses : currentUses;
+                const possibleGain = Math.max(0, Math.min(manaAmount, maxUses - currentUses));
+
+                if (possibleGain <= 0) {
+                    this.showMessage('El Mago ya tiene usos completos');
+                    this.time.delayedCall(1000, () => this.showMainMenu());
+                    return;
+                }
+
+                // Cerrar menú y aplicar el efecto
+                this.removeTemporaryMenus();
+                if (this.menuContainer) {
+                    this.tweens.add({
+                        targets: this.menuContainer,
+                        alpha: 0,
+                        duration: 200,
+                        ease: 'Linear',
+                        onComplete: () => {
+                            this.menuContainer.setVisible(false);
+                            // Aplicar en inventario
+                            if (inventarioScene && inventarioScene.inventario) {
+                                inventarioScene.inventario.manaPotion--;
+                            }
+                            // Aplicar al Mago en combate
+                            mage.normalAttackUses = currentUses + possibleGain;
+                            // Sincronizar registry para otras escenas
+                            this.registry.set('playerParty', this.playerParty);
+
+                            // Mostrar feedback sobre el Mago
+                            this.add.text(mage.sprite.x, mage.sprite.y - 60, `+${possibleGain} usos`, { font: '18px Arial', fill: '#00FF00' }).setOrigin(0.5).setDepth(10).setData('floatingText', true);
+
+                            // Esperar y terminar el turno
+                            this.time.delayedCall(1000, () => {
+                                this.updateMenuPosition();
+                                this.endPlayerTurn();
+                            });
+                        }
+                    });
+                } else {
+                    if (inventarioScene && inventarioScene.inventario) {
+                        inventarioScene.inventario.manaPotion--;
+                    }
+                    mage.normalAttackUses = currentUses + possibleGain;
+                    this.registry.set('playerParty', this.playerParty);
+                    this.add.text(mage.sprite.x, mage.sprite.y - 60, `+${possibleGain} usos`, { font: '18px Arial', fill: '#00FF00' }).setOrigin(0.5).setDepth(10).setData('floatingText', true);
+                    this.time.delayedCall(1000, () => this.endPlayerTurn());
+                }
+            });
+            btnMana.setAlpha(0);
+            btnMana.setScale(0.8);
+            this.menuContainer.add(btnMana);
+            buttons.push(btnMana);
+            yOffset += buttonHeight + 10;
+        }
+
+        // Si no hay items
+        if (!hasItems) {
+            const text = this.add.text(this.menuXOffset, this.menuYOffset + yOffset, '(No items)', {
+                font: '14px Arial',
+                fill: '#999999'
+            }).setOrigin(0.5, 0.5);
+            text.setAlpha(0);
+            this.menuContainer.add(text);
+            this.tweens.add({
+                targets: text,
+                alpha: 1,
+                duration: 300,
+                ease: 'Linear'
+            });
+            yOffset += 50;
+        }
+
+        // Botón BACK
+        const backBtn = this.createMenuButton('BACK', 0, yOffset, buttonWidth, buttonHeight, () => this.showMainMenu());
+        backBtn.setAlpha(0);
+        backBtn.setScale(0.8);
+        this.menuContainer.add(backBtn);
+        buttons.push(backBtn);
+
+        // Animar entrada de botones
+        buttons.forEach((btn, idx) => {
+            this.tweens.add({
+                targets: btn,
+                alpha: 1,
+                scale: 1,
+                duration: 300,
+                delay: idx * 80,
+                ease: 'Back.out'
+            });
+        });
+    }
+
+    createMenuButton(text, x, y, width, height, onClickCallback) {
+        const container = this.add.container(this.menuXOffset + x, this.menuYOffset + y);
+
+        // Fondo del botón
+        const bg = this.add.rectangle(0, 0, width, height, 0x333333, 0.9);
+        bg.setStrokeStyle(2, 0xcccccc);
+
+        // Texto del botón
+        const label = this.add.text(0, 0, text, {
+            font: '14px Arial',
+            fill: '#ffffff'
+        }).setOrigin(0.5, 0.5);
+
+        container.add([bg, label]);
+        container.setSize(width, height);
+        container.setInteractive(new Phaser.Geom.Rectangle(-width / 2, -height / 2, width, height), Phaser.Geom.Rectangle.Contains);
+
+        // Hover effect
+        container.on('pointerover', () => {
+            bg.setFillStyle(0x555555, 0.95);
+            label.setFill('#FFFF00');
+        });
+
+        container.on('pointerout', () => {
+            bg.setFillStyle(0x333333, 0.9);
+            label.setFill('#ffffff');
+        });
+
+        // Click handler
+        container.on('pointerdown', onClickCallback);
+
+        return container;
+    }
+
+    // === LOOP PRINCIPAL DE ACTUALIZACIÓN ===
+    // Se ejecuta cada frame para procesar entrada del jugador
+    update() {
+        if (this.gameState.battleOver) return; // Si la batalla terminó, no hacer nada
+        // El menú ahora es controlado por mouse, no por teclado
+    }
+
+    // showAttackMenu() ahora es showAttackSubmenu() (ver createMenuUI)
 
     // === SELECCIONAR ENEMIGO OBJETIVO ===
     selectEnemyTarget(attack) {
-        // Obtener lista de enemigos que aún viven
+        // Animar menú hacia afuera
+        if (this.menuContainer) {
+            this.tweens.add({
+                targets: this.menuContainer,
+                alpha: 0,
+                duration: 200,
+                ease: 'Linear',
+                onComplete: () => {
+                    this.menuContainer.setVisible(false);
+                }
+            });
+        }
+        
+        // Get alive enemies
         const aliveEnemies = this.enemyParty.filter(e => !e.dead);
         if (aliveEnemies.length === 0) {
             this.endPlayerTurn();
             return;
         }
 
-        this.selectedEnemyTarget = 0;
-        this.displayEnemyTargets(aliveEnemies, attack);
+        this.removeTemporaryMenus();
+        this.targetSelectionActive = true;
+        this.selectedEnemyIndex = 0; // Índice del enemigo seleccionado
 
-        // Manejar navegación y selección del objetivo
-        const handleTargetSelection = (event) => {
-            if (event.key === 'ArrowUp') {
-                this.selectedEnemyTarget = (this.selectedEnemyTarget - 1 + aliveEnemies.length) % aliveEnemies.length;
-                this.displayEnemyTargets(aliveEnemies, attack);
-            } else if (event.key === 'ArrowDown') {
-                this.selectedEnemyTarget = (this.selectedEnemyTarget + 1) % aliveEnemies.length;
-                this.displayEnemyTargets(aliveEnemies, attack);
+        // Mostrar instrucción
+        const instructionText = this.add.text(425, 150, 'Selecciona enemigo: ← → y ENTER', {
+            font: '16px Arial',
+            fill: '#FFFF00'
+        }).setOrigin(0.5, 0.5).setDepth(10).setData('tempMenu', true);
+
+        // Crear Graphics para dibujar un recuadro de selección (contorno)
+        const selectionGraphics = this.add.graphics();
+        selectionGraphics.setDepth(110);
+        selectionGraphics.setData('tempMenu', true);
+
+        // Función para actualizar dibujo del recuadro centrado en el sprite enemigo
+        const updateSelectionBox = () => {
+            selectionGraphics.clear();
+            const enemy = aliveEnemies[this.selectedEnemyIndex];
+            if (!enemy || !enemy.sprite) return;
+            // Usar displayWidth/Height para respetar el scale del sprite
+            const w = enemy.sprite.displayWidth || (enemy.sprite.width * enemy.sprite.scaleX) || 130;
+            const h = enemy.sprite.displayHeight || (enemy.sprite.height * enemy.sprite.scaleY) || 130;
+            const x = enemy.sprite.x - w / 2;
+            const y = enemy.sprite.y - h / 2;
+            selectionGraphics.lineStyle(3, 0xFF0000, 1);
+            selectionGraphics.strokeRect(x, y, w, h);
+        };
+
+        updateSelectionBox();
+
+        // Manejar entrada por teclado
+        const handleKeyDown = (event) => {
+            if (event.key === 'ArrowLeft') {
+                this.selectedEnemyIndex = (this.selectedEnemyIndex - 1 + aliveEnemies.length) % aliveEnemies.length;
+                updateSelectionBox();
+            } else if (event.key === 'ArrowRight') {
+                this.selectedEnemyIndex = (this.selectedEnemyIndex + 1) % aliveEnemies.length;
+                updateSelectionBox();
             } else if (event.key === 'Enter') {
-                this.input.keyboard.off('keydown', handleTargetSelection);
+                this.input.keyboard.off('keydown', handleKeyDown);
                 this.removeTemporaryMenus();
-                this.performAttack(attack, aliveEnemies[this.selectedEnemyTarget]);
+                this.targetSelectionActive = false;
+
+                // Execute attack and let performAttack end the turn
+                this.performAttack(attack, aliveEnemies[this.selectedEnemyIndex]);
             }
         };
 
-        this.input.keyboard.on('keydown', handleTargetSelection);
+        this.input.keyboard.on('keydown', handleKeyDown);
     }
 
-    // === MOSTRAR LISTA DE ENEMIGOS DISPONIBLES ===
-    // Dibuja la lista de enemigos con el actual resaltado en amarillo
-    displayEnemyTargets(enemies, attack) {
-        this.removeTemporaryMenus();
-
-        this.add.text(425, 200, 'Select Target: Arrow Keys', {
-            font: '16px Arial',
-            fill: '#FFFF00'
-        }).setOrigin(0.5, 0.5).setDepth(10).setData('targetSelector', true);
-
-        // Mostrar cada enemigo disponible
-        enemies.forEach((enemy, index) => {
-            const marker = index === this.selectedEnemyTarget ? '> ' : '  '; // Indicador visual del seleccionado
-            this.add.text(425, 240 + index * 40, `${marker}${enemy.name} (${enemy.hp}/${enemy.maxHp})`, {
-                font: '14px Arial',
-                fill: index === this.selectedEnemyTarget ? '#FFFF00' : '#ffffff'
-            }).setOrigin(0.5, 0.5).setDepth(10).setData('targetSelector', true);
-        });
-    }
+    // displayEnemyTargets() ya no se usa - reemplazado por selectEnemyTarget con recuadro visual
 
     // === EJECUTAR EL ATAQUE ===
     // Calcula el daño, lo aplica al objetivo y muestra la animación de daño
-    performAttack(attack, target) {
+    performAttack(attack, target, onComplete = null) {
+        // Evitar ataques concurrentes que puedan aplicar daño doble
+        if (this._attackInProgress) return;
+
         const attacker = this.playerParty[this.gameState.currentCharacter];
 
         // Validar que el ataque tenga usos disponibles
@@ -545,10 +793,14 @@ class PeleaDebug extends Phaser.Scene {
             this.showMessage('No uses left!');
             return;
         }
+
         if (attack.type === 'strong' && attacker.strongAttackUses <= 0) {
             this.showMessage('No uses left!');
             return;
         }
+
+        // Marca que un ataque está en progreso (limpia al terminar el turno)
+        this._attackInProgress = true;
 
         // === ANIMAR SALTO PARABÓLICO DEL ATACANTE HACIA EL ENEMIGO ===
         // Guardar posición original del atacante y cámara
@@ -574,9 +826,9 @@ class PeleaDebug extends Phaser.Scene {
         const initialCameraY = this.cameras.main.centerY;
         const initialZoom = this.cameras.main.zoom;
         
-        // Punto medio entre el atacante y el enemigo (donde enfocarse)
-        const focusX = (originalX + targetX) / 2;
-        const focusY = (originalY + targetY) / 2;
+        // Punto medio entre el atacante y el enemigo (donde enfocarse), desplazado más a la derecha
+        const focusX = (originalX + targetX) / 2 + 300; // +150 para mover más a la derecha
+        const focusY = (originalY + targetY) / 2 - 150; // -150 para mover más arriba
 
         // === SALTO DE IDA CON PARÁBOLA Y CÁMARA ===
         this.tweens.add({
@@ -595,7 +847,7 @@ class PeleaDebug extends Phaser.Scene {
                 attacker.sprite.y = originalY + distanceY * t + heightOffset;
                 
                 // La cámara se enfoca en el punto medio y va haciendo zoom gradualmente
-                const targetZoom = initialZoom + (0.3 * t); // zoom de inicial a inicial+0.3
+                const targetZoom = initialZoom + (1 * t); // zoom de inicial a inicial+0.3
                 
                 this.cameras.main.setZoom(targetZoom);
                 // Interpolar entre la posición inicial y el punto de enfoque
@@ -642,18 +894,25 @@ class PeleaDebug extends Phaser.Scene {
                             durationMs = (anim.frames.length / anim.frameRate) * 1000;
                         }
 
-                        // Aplicar daño y sonido antes (al 30% de la animación)
+                        // Aplicar daño y sonido antes (al ~20% de la animación)
                         this.time.delayedCall(Math.floor(durationMs * 0.2), () => {
-                            // Calcular daño según el atacante
-                            let damage = 0;
-                            if (attack.type === 'normal') damage = attacker.attack;
-                            else if (attack.type === 'strong') damage = Math.floor(attacker.attack * 2);
-                            else if (attack.type === 'spell') damage = attacker.attack;
+                            // Usar `attack.damage` si fue provisto, si no calcular según el tipo
+                            let damage;
+                            if (Number.isFinite(attack.damage)) {
+                                damage = attack.damage;
+                            } else {
+                                if (attack.type === 'normal') damage = attacker.attack;
+                                else if (attack.type === 'strong') damage = Math.floor(attacker.attack * 2);
+                                else if (attack.type === 'spell') damage = attacker.attack;
+                                else damage = attacker.attack;
+                            }
 
                             target.hp = Math.max(0, target.hp - damage);
 
-                            // Decrementar usos
+                            // Decrementar usos según tipo de ataque
                             if (attack.type === 'normal') attacker.normalAttackUses--;
+                            else if (attack.type === 'strong') attacker.strongAttackUses--;
+                            else if (attack.type === 'spell') attacker.normalAttackUses--;
 
                             // Reproducir sonido del golpe débil
                             this.sound.play('GolpeDebil');
@@ -680,7 +939,7 @@ class PeleaDebug extends Phaser.Scene {
                                 targets: { progress: 0 },
                                 progress: 1,
                                 duration: jumpDuration,
-                                ease: 'Linear',
+                                ease: 'Sine.easeInOut',
                                 onUpdate: (tween) => {
                                     const t = tween.progress; // Valor de 0 a 1
                                     const heightOffset = 4 * maxHeight * t * (t - 1);
@@ -688,7 +947,8 @@ class PeleaDebug extends Phaser.Scene {
                                     attacker.sprite.y = targetY - distanceY * t + heightOffset;
                                     
                                     // La cámara regresa gradualmente a la posición y zoom iniciales
-                                    const remainingZoom = (initialZoom + 0.3) - (0.3 * t);
+                                    const maxZoomReached = initialZoom + 1; // debe coincidir con el zoom máximo del salto de ida
+                                    const remainingZoom = maxZoomReached - (1 * t); // regresa suavemente desde maxZoom a initialZoom
                                     
                                     this.cameras.main.setZoom(remainingZoom);
                                     // Interpolar entre el punto de enfoque y la posición inicial
@@ -699,22 +959,35 @@ class PeleaDebug extends Phaser.Scene {
                                 onComplete: () => {
                                     // Restaurar cámara a su estado original de forma garantizada
                                     this.resetCamera(initialCameraX, initialCameraY, initialZoom);
-                                    this.endPlayerTurn();
+                                    // Limpiar bandera de ataque antes de terminar el turno
+                                    this._attackInProgress = false;
+                                    if (onComplete) {
+                                        onComplete();
+                                    } else {
+                                        this.endPlayerTurn();
+                                    }
                                 }
                             });
                         });
                     } else {
                         // Comportamiento por defecto: aplicar daño inmediatamente y volver
-                        // Calcular daño usando stats del atacante
-                        let damage = 0;
-                        if (attack.type === 'normal') damage = attacker.attack;
-                        else if (attack.type === 'strong') damage = Math.floor(attacker.attack * 2);
-                        else if (attack.type === 'spell') damage = attacker.attack;
+                        // Usar `attack.damage` si fue provisto, si no calcular según el tipo
+                        let damage;
+                        if (Number.isFinite(attack.damage)) {
+                            damage = attack.damage;
+                        } else {
+                            if (attack.type === 'normal') damage = attacker.attack;
+                            else if (attack.type === 'strong') damage = Math.floor(attacker.attack * 2);
+                            else if (attack.type === 'spell') damage = attacker.attack;
+                            else damage = attacker.attack;
+                        }
 
                         target.hp = Math.max(0, target.hp - damage);
 
+                        // Decrementar usos según tipo de ataque
                         if (attack.type === 'normal') attacker.normalAttackUses--;
                         else if (attack.type === 'strong') attacker.strongAttackUses--;
+                        else if (attack.type === 'spell') attacker.normalAttackUses--;
 
                         // Aplicar efecto de sacudida en X al enemigo
                         this.shakeSprite(target.sprite);
@@ -732,7 +1005,7 @@ class PeleaDebug extends Phaser.Scene {
                             targets: { progress: 0 },
                             progress: 1,
                             duration: jumpDuration,
-                            ease: 'Linear',
+                            ease: 'Sine.easeInOut',
                             onUpdate: (tween) => {
                                 const t = tween.progress; // Valor de 0 a 1
                                 const heightOffset = 4 * maxHeight * t * (t - 1);
@@ -740,7 +1013,8 @@ class PeleaDebug extends Phaser.Scene {
                                 attacker.sprite.y = targetY - distanceY * t + heightOffset;
                                 
                                 // La cámara regresa gradualmente a la posición y zoom iniciales
-                                const remainingZoom = (initialZoom + 0.3) - (0.3 * t);
+                                const maxZoomReached = initialZoom + 1; // debe coincidir con el zoom máximo del salto de ida
+                                const remainingZoom = maxZoomReached - (1 * t); // regresa suavemente desde maxZoom a initialZoom
                                 
                                 this.cameras.main.setZoom(remainingZoom);
                                 // Interpolar entre el punto de enfoque y la posición inicial
@@ -751,7 +1025,13 @@ class PeleaDebug extends Phaser.Scene {
                             onComplete: () => {
                                 // Restaurar cámara a su estado original de forma garantizada
                                 this.resetCamera(initialCameraX, initialCameraY, initialZoom);
-                                this.endPlayerTurn();
+                                // Limpiar bandera de ataque antes de terminar el turno
+                                this._attackInProgress = false;
+                                if (onComplete) {
+                                    onComplete();
+                                } else {
+                                    this.endPlayerTurn();
+                                }
                             }
                         });
                     }
@@ -761,43 +1041,60 @@ class PeleaDebug extends Phaser.Scene {
     }
 
     selectCharacterToHeal() {
+        // Animar menú hacia afuera
+        if (this.menuContainer) {
+            this.tweens.add({
+                targets: this.menuContainer,
+                alpha: 0,
+                duration: 200,
+                ease: 'Linear',
+                onComplete: () => {
+                    this.menuContainer.setVisible(false);
+                }
+            });
+        }
+        
         const aliveAllies = this.playerParty.filter(p => p.hp > 0);
-        let selectedAlly = 0;
+        
+        this.removeTemporaryMenus();
+        this.targetSelectionActive = true;
+        this.selectedAllyIndex = 0;
 
-        this.displayHealTargets(aliveAllies, selectedAlly);
+        this.add.text(425, 150, 'Selecciona aliado a curar: ← → y ENTER', {
+            font: '16px Arial',
+            fill: '#FFFF00'
+        }).setOrigin(0.5, 0.5).setDepth(10).setData('tempMenu', true);
 
-        const handleHealSelection = (event) => {
-            if (event.key === 'ArrowUp') {
-                selectedAlly = (selectedAlly - 1 + aliveAllies.length) % aliveAllies.length;
-                this.displayHealTargets(aliveAllies, selectedAlly);
-            } else if (event.key === 'ArrowDown') {
-                selectedAlly = (selectedAlly + 1) % aliveAllies.length;
-                this.displayHealTargets(aliveAllies, selectedAlly);
+        // Crear recuadro de selección
+        const selectionBox = this.add.rectangle(0, 0, 130, 140, 0x00FF00, 0);
+        selectionBox.setStrokeStyle(3, 0x00FF00);
+        selectionBox.setDepth(102);
+        selectionBox.setData('tempMenu', true);
+
+        const updateSelectionBox = () => {
+            const ally = aliveAllies[this.selectedAllyIndex];
+            selectionBox.setPosition(ally.sprite.x, ally.sprite.y);
+        };
+
+        updateSelectionBox();
+
+        const handleKeyDown = (event) => {
+            if (event.key === 'ArrowLeft') {
+                this.selectedAllyIndex = (this.selectedAllyIndex - 1 + aliveAllies.length) % aliveAllies.length;
+                updateSelectionBox();
+            } else if (event.key === 'ArrowRight') {
+                this.selectedAllyIndex = (this.selectedAllyIndex + 1) % aliveAllies.length;
+                updateSelectionBox();
             } else if (event.key === 'Enter') {
-                this.input.keyboard.off('keydown', handleHealSelection);
+                this.input.keyboard.off('keydown', handleKeyDown);
                 this.removeTemporaryMenus();
-                this.performHeal(aliveAllies[selectedAlly]);
+                this.targetSelectionActive = false;
+                this.performHeal(aliveAllies[this.selectedAllyIndex]);
+                // performHeal ya llama a endPlayerTurn() después de 1 segundo
             }
         };
 
-        this.input.keyboard.on('keydown', handleHealSelection);
-    }
-
-    displayHealTargets(allies, selected) {
-        this.removeTemporaryMenus();
-
-        this.add.text(425, 200, 'Select to Heal: Arrow Keys', {
-            font: '16px Arial',
-            fill: '#FFFF00'
-        }).setOrigin(0.5, 0.5).setDepth(10).setData('healSelector', true);
-
-        allies.forEach((ally, index) => {
-            const marker = index === selected ? '> ' : '  ';
-            this.add.text(425, 240 + index * 40, `${marker}${ally.name} (${ally.hp}/${ally.maxHp})`, {
-                font: '14px Arial',
-                fill: index === selected ? '#FFFF00' : '#ffffff'
-            }).setOrigin(0.5, 0.5).setDepth(10).setData('healSelector', true);
-        });
+        this.input.keyboard.on('keydown', handleKeyDown);
     }
 
     // === REALIZAR CURACIÓN ===
@@ -833,12 +1130,169 @@ class PeleaDebug extends Phaser.Scene {
     }
 
     // === MOSTRAR MENÚ DE OBJETOS ===
-    // Actualmente no hay items, pero aquí se mostrarían las opciones
+    // Mostrar y permitir uso de ítems (actualmente solo poción)
     showItemsMenu() {
         this.removeTemporaryMenus();
-        this.showMessage('No items available yet!');
 
-        this.time.delayedCall(1500, () => {
+        // Obtener inventario desde la escena InventarioScene
+        const inventarioScene = this.scene.get('InventarioScene');
+        if (!inventarioScene) {
+            this.showMessage('No inventory available!');
+            this.time.delayedCall(1500, () => this.endPlayerTurn());
+            return;
+        }
+
+        // Filtrar solo items que tenemos (cantidad > 0) y que podemos usar en batalla
+        const availableItems = [];
+        const inventario = inventarioScene.inventario || {};
+        
+        if (inventario.potion && inventario.potion > 0) {
+            availableItems.push({ key: 'potion', cantidad: inventario.potion, nombre: 'Poción de Vida' });
+        }
+
+        // Si no hay items disponibles
+        if (availableItems.length === 0) {
+            this.showMessage('No items available!');
+            this.time.delayedCall(1500, () => this.endPlayerTurn());
+            return;
+        }
+
+        // Mostrar opciones de items disponibles
+        this.add.text(425, 150, 'Select Item:', {
+            font: '16px Arial',
+            fill: '#FFFF00'
+        }).setOrigin(0.5, 0.5).setDepth(10).setData('tempMenu', true);
+
+        availableItems.forEach((item, idx) => {
+            this.add.text(425, 200 + idx * 40, `${idx + 1}: ${item.nombre} (${item.cantidad})`, {
+                font: '14px Arial',
+                fill: '#ffffff'
+            }).setOrigin(0.5, 0.5).setDepth(10).setData('tempMenu', true);
+        });
+
+        // Manejar la selección del item (presionar 1, 2, 3... etc)
+        const handleItemSelection = (event) => {
+            const choice = parseInt(event.key);
+            if (choice >= 1 && choice <= availableItems.length) {
+                this.input.keyboard.off('keydown', handleItemSelection);
+                this.removeTemporaryMenus();
+
+                const selected = availableItems[choice - 1];
+                
+                // Para pociones, siempre se usan en el equipo, así que seleccionar aliado a curar
+                if (selected.key === 'potion') {
+                    const current = this.playerParty[this.gameState.currentCharacter];
+                    if (!current) {
+                        this.showMessage('No hay objetivo válido!');
+                        this.time.delayedCall(1000, () => this.endPlayerTurn());
+                        return;
+                    }
+                    if (current.hp >= current.maxHp) {
+                        this.showMessage('No necesita curación!');
+                        this.time.delayedCall(1000, () => this.showMainMenu());
+                        return;
+                    }
+                    this.usePotion(current);
+                }
+            }
+        };
+
+        this.input.keyboard.on('keydown', handleItemSelection);
+    }
+
+    // === SELECCIONAR ALIADO PARA USAR POCIÓN ===
+    selectCharacterToUsePotion() {
+        // Animar menú hacia afuera
+        if (this.menuContainer) {
+            this.tweens.add({
+                targets: this.menuContainer,
+                alpha: 0,
+                duration: 200,
+                ease: 'Linear',
+                onComplete: () => {
+                    this.menuContainer.setVisible(false);
+                }
+            });
+        }
+        
+        const aliveAllies = this.playerParty.filter(p => p.hp > 0 && p.hp < p.maxHp);
+        
+        // Si no hay aliados vivos que necesiten curación
+        if (aliveAllies.length === 0) {
+            this.showMessage('No hay aliados que necesiten curación!');
+            this.time.delayedCall(1500, () => this.endPlayerTurn());
+            return;
+        }
+
+        this.removeTemporaryMenus();
+        this.targetSelectionActive = true;
+        this.selectedAllyIndex = 0;
+
+        this.add.text(425, 150, 'Selecciona aliado a curar: ← → y ENTER', {
+            font: '16px Arial',
+            fill: '#FFFF00'
+        }).setOrigin(0.5, 0.5).setDepth(10).setData('tempMenu', true);
+
+        // Crear recuadro de selección
+        const selectionBox = this.add.rectangle(0, 0, 130, 140, 0x00FF00, 0);
+        selectionBox.setStrokeStyle(3, 0x00FF00);
+        selectionBox.setDepth(102);
+        selectionBox.setData('tempMenu', true);
+
+        const updateSelectionBox = () => {
+            const ally = aliveAllies[this.selectedAllyIndex];
+            selectionBox.setPosition(ally.sprite.x, ally.sprite.y);
+        };
+
+        updateSelectionBox();
+
+        const handleKeyDown = (event) => {
+            if (event.key === 'ArrowLeft') {
+                this.selectedAllyIndex = (this.selectedAllyIndex - 1 + aliveAllies.length) % aliveAllies.length;
+                updateSelectionBox();
+            } else if (event.key === 'ArrowRight') {
+                this.selectedAllyIndex = (this.selectedAllyIndex + 1) % aliveAllies.length;
+                updateSelectionBox();
+            } else if (event.key === 'Enter') {
+                this.input.keyboard.off('keydown', handleKeyDown);
+                this.removeTemporaryMenus();
+                this.targetSelectionActive = false;
+                this.usePotion(aliveAllies[this.selectedAllyIndex]);
+                // usePotion ya llama a endPlayerTurn() después de 1 segundo
+            }
+        };
+
+        this.input.keyboard.on('keydown', handleKeyDown);
+    }
+
+
+    usePotion(target) {
+        const inventarioScene = this.scene.get('InventarioScene');
+        if (!inventarioScene || !inventarioScene.inventario.potion || inventarioScene.inventario.potion <= 0) {
+            this.showMessage('Potion not available!');
+            this.time.delayedCall(1500, () => this.endPlayerTurn());
+            return;
+        }
+
+        const healAmount = 50;
+
+        // Restaurar HP (sin exceder maxHp)
+        target.hp = Math.min(target.maxHp, target.hp + healAmount);
+        
+        // Decrementar poción del inventario
+        inventarioScene.inventario.potion--;
+
+        // Mostrar número de curación en verde sobre el aliado
+        this.add.text(target.sprite.x, target.sprite.y - 40, `+${healAmount}`, {
+            font: '20px Arial',
+            fill: '#00FF00'
+        }).setOrigin(0.5, 0.5).setDepth(10).setData('floatingText', true);
+
+        // Actualizar barras de vida
+        this.updateHPDisplay(target);
+
+        // Esperar 1 segundo y terminar turno
+        this.time.delayedCall(1000, () => {
             this.endPlayerTurn();
         });
     }
@@ -846,11 +1300,12 @@ class PeleaDebug extends Phaser.Scene {
     // === CAMBIAR DE PERSONAJE ===
     // Intercambia entre Knight y Mage con una animación de intercambio de posiciones
     changeCharacter() {
+        // Hide main menu while animating character swap
+        if (this.menuContainer) this.menuContainer.setVisible(false);
+        
         this.removeTemporaryMenus();
         // Rotar al siguiente personaje (0→1 o 1→0)
         this.gameState.currentCharacter = (this.gameState.currentCharacter + 1) % this.playerParty.length;
-        // Actualizar texto de turno
-        this.turnInfoText.setText(`${this.playerParty[this.gameState.currentCharacter].name}'s Turn`);
 
         // Animar intercambio de posiciones (sin rotación, solo movimiento Y)
         const knight = this.playerParty[0].sprite;
@@ -863,12 +1318,12 @@ class PeleaDebug extends Phaser.Scene {
         const knightPos = { x: knight.x, y: knight.y };
         const magePos = { x: mage.x, y: mage.y };
 
-        // Preparar offsets relativos para corazones (para seguir al sprite durante la animación)
-        const knightHearts = this.playerParty[0].hearts || [];
-        const mageHearts = this.playerParty[1].hearts || [];
+        // Preparar offsets relativos para las barras de vida (para seguir al sprite durante la animación)
+        const knightHpBar = this.playerParty[0].hpBar || null;
+        const mageHpBar = this.playerParty[1].hpBar || null;
 
-        const knightHeartOffsets = knightHearts.map(h => ({ dx: h.x - knight.x, dy: h.y - knight.y }));
-        const mageHeartOffsets = mageHearts.map(h => ({ dx: h.x - mage.x, dy: h.y - mage.y }));
+        const knightHpBarOffset = knightHpBar ? { dx: knightHpBar.container.x - knight.x, dy: knightHpBar.container.y - knight.y } : { dx: 0, dy: 0 };
+        const mageHpBarOffset = mageHpBar ? { dx: mageHpBar.container.x - mage.x, dy: mageHpBar.container.y - mage.y } : { dx: 0, dy: 0 };
 
         // Tween parabólico para el Caballero (va hacia la posición del Mago, con arco hacia abajo)
         this.tweens.addCounter({
@@ -882,12 +1337,11 @@ class PeleaDebug extends Phaser.Scene {
                 knight.x = Phaser.Math.Interpolation.Linear([knightPos.x, magePos.x], t);
                 knight.y = Phaser.Math.Interpolation.Linear([knightPos.y, magePos.y], t) + (4 * maxHeight * t * (t - 1)); // parábola hacia abajo
 
-                // actualizar corazones del Caballero
-                knightHearts.forEach((h, idx) => {
-                    const off = knightHeartOffsets[idx];
-                    h.x = knight.x + off.dx;
-                    h.y = knight.y + off.dy;
-                });
+                // actualizar barra de vida del Caballero
+                if (knightHpBar && knightHpBar.container) {
+                    knightHpBar.container.x = knight.x + knightHpBarOffset.dx;
+                    knightHpBar.container.y = knight.y + knightHpBarOffset.dy;
+                }
             }
         });
 
@@ -904,18 +1358,18 @@ class PeleaDebug extends Phaser.Scene {
                 // parábola invertida (hacia arriba) -> invertimos el signo del offset
                 mage.y = Phaser.Math.Interpolation.Linear([magePos.y, knightPos.y], t) - (4 * maxHeight * t * (t - 1));
 
-                // actualizar corazones del Mago
-                mageHearts.forEach((h, idx) => {
-                    const off = mageHeartOffsets[idx];
-                    h.x = mage.x + off.dx;
-                    h.y = mage.y + off.dy;
-                });
+                // actualizar barra de vida del Mago
+                if (mageHpBar && mageHpBar.container) {
+                    mageHpBar.container.x = mage.x + mageHpBarOffset.dx;
+                    mageHpBar.container.y = mage.y + mageHpBarOffset.dy;
+                }
             }
         });
 
-        // Esperar a que termine la animación y terminar turno
+        // After animation completes, update menu position and show main menu
         this.time.delayedCall(duration + 100, () => {
-            this.endPlayerTurn();
+            this.updateMenuPosition();
+            this.showMainMenu();
         });
     }
 
@@ -934,10 +1388,10 @@ class PeleaDebug extends Phaser.Scene {
         // Cambiar a turno de enemigos
         this.gameState.currentTurn = 'enemy';
         this.turnIndicator.setFillStyle(0x0000FF); // Cambiar indicador a azul
-        this.turnIndicatorText.setText('ENEMY');
+        if (this.turnIndicatorText) this.turnIndicatorText.setText('ENEMY');
         // Ocultar menú
-        this.menuTexts.forEach(t => t.setVisible(false));
-        this.turnInfoText.setVisible(false);
+        if (this.menuContainer) this.menuContainer.setVisible(false);
+        if (this.turnInfoText) this.turnInfoText.setVisible(false);
 
         // Esperar y luego ejecutar turno de enemigos
         this.time.delayedCall(1500, () => {
@@ -1018,10 +1472,14 @@ class PeleaDebug extends Phaser.Scene {
                                 attacker.isAttacking = false;
                                 this.gameState.currentTurn = 'player';
                                 this.turnIndicator.setFillStyle(0xFF0000);
-                                this.turnIndicatorText.setText('PLAYER');
-                                this.menuTexts.forEach(t => t.setVisible(true));
-                                this.turnInfoText.setVisible(true);
-                                this.turnInfoText.setText(`${this.playerParty[this.gameState.currentCharacter].name}'s Turn`);
+                                if (this.turnIndicatorText) this.turnIndicatorText.setText('PLAYER');
+                                // Reconstruir y mostrar el menú en vez de solo reactivarlo
+                                this.updateMenuPosition();
+                                this.showMainMenu();
+                                if (this.turnInfoText) {
+                                    this.turnInfoText.setVisible(true);
+                                    this.turnInfoText.setText(`${this.playerParty[this.gameState.currentCharacter].name}'s Turn`);
+                                }
                                 this.selectedMenuOption = 0;
                                 this.updateMenuHighlight();
 
@@ -1094,10 +1552,14 @@ class PeleaDebug extends Phaser.Scene {
                                 attacker.isAttacking = false;
                                 this.gameState.currentTurn = 'player';
                                 this.turnIndicator.setFillStyle(0xFF0000);
-                                this.turnIndicatorText.setText('PLAYER');
-                                this.menuTexts.forEach(t => t.setVisible(true));
-                                this.turnInfoText.setVisible(true);
-                                this.turnInfoText.setText(`${this.playerParty[this.gameState.currentCharacter].name}'s Turn`);
+                                if (this.turnIndicatorText) this.turnIndicatorText.setText('PLAYER');
+                                // Reconstruir y mostrar el menú en vez de solo reactivarlo
+                                this.updateMenuPosition();
+                                this.showMainMenu();
+                                if (this.turnInfoText) {
+                                    this.turnInfoText.setVisible(true);
+                                    this.turnInfoText.setText(`${this.playerParty[this.gameState.currentCharacter].name}'s Turn`);
+                                }
                                 this.selectedMenuOption = 0;
                                 this.updateMenuHighlight();
 
@@ -1118,28 +1580,38 @@ class PeleaDebug extends Phaser.Scene {
     // Sincroniza todas las barras de vida visual con los datos de HP actuales
     // Escala las barras según (hp/maxHp) y actualiza el texto de HP mostrado
     updateHPDisplay(entity) {
+        // Actualiza la barra de vida asociada a la entidad (player o enemy)
+        if (!entity || !entity.hpBar) return;
 
-        const HEART_VALUE = 10;
-    
-        const totalHearts = Math.ceil(entity.maxHp / HEART_VALUE);
-        const heartsToShow = Math.ceil(entity.hp / HEART_VALUE);
-    
-        entity.hearts.forEach((heart, index) => {
-    
-            const hpForThisHeart = entity.hp - (index * HEART_VALUE);
-    
-            if (hpForThisHeart >= HEART_VALUE) {
-                heart.setAlpha(1); // lleno
-            } 
-            else if (hpForThisHeart <= 0) {
-                heart.setAlpha(0); // desaparece
-            }
-            else {
-                // corazón incompleto → transparencia proporcional
-                const percent = hpForThisHeart / HEART_VALUE;
-                heart.setAlpha(percent);
-            }
-        });
+        const bar = entity.hpBar;
+        const ratio = Phaser.Math.Clamp(entity.hp / entity.maxHp, 0, 1);
+        const newWidth = Math.floor(bar.width * ratio);
+
+        // Ajustar tamaño del rectángulo foreground
+        if (bar.fg && typeof bar.fg.setSize === 'function') {
+            bar.fg.setSize(Math.max(0, newWidth), bar.height);
+            // Mantener el anclaje a la izquierda del fondo
+            bar.fg.x = -bar.width / 2;
+        } else if (bar.fg) {
+            bar.fg.width = Math.max(0, newWidth);
+            bar.fg.x = -bar.width / 2;
+        }
+
+        // Cambiar color según porcentaje (verde -> amarillo -> rojo)
+        let color = 0x00cc00;
+        if (ratio <= 0.25) color = 0xff3333;
+        else if (ratio <= 0.5) color = 0xffcc00;
+        if (bar.fg && typeof bar.fg.setFillStyle === 'function') bar.fg.setFillStyle(color);
+
+        // Actualizar texto
+        if (bar.hpText) bar.hpText.setText(`${entity.hp}/${entity.maxHp}`);
+
+        // Si está muerto, indicar visualmente
+        if (entity.hp <= 0) {
+            if (bar.container) bar.container.setAlpha(0.5);
+        } else {
+            if (bar.container) bar.container.setAlpha(1);
+        }
     }
     
 
@@ -1190,8 +1662,8 @@ class PeleaDebug extends Phaser.Scene {
         // Reproducir audio de victoria
         this.sound.play('VictoriaFFVII');
         // Ocultar menú de batalla
-        this.menuTexts.forEach(t => t.setVisible(false));
-        this.turnInfoText.setVisible(false);
+        if (this.menuContainer) this.menuContainer.setVisible(false);
+        if (this.turnInfoText) this.turnInfoText.setVisible(false);
 
         // Calcular EXP ganada según tipo y cantidad de enemigos derrotados
         const enemyCount = this.enemyParty.length || 1;
@@ -1289,8 +1761,8 @@ class PeleaDebug extends Phaser.Scene {
             this.PeleaTuto.stop();
         }
         // Ocultar menú de batalla
-        this.menuTexts.forEach(t => t.setVisible(false));
-        this.turnInfoText.setVisible(false);
+        if (this.menuContainer) this.menuContainer.setVisible(false);
+        if (this.turnInfoText) this.turnInfoText.setVisible(false);
 
         // Mostrar pantalla de derrota con textos
         this.add.text(425, 250, 'DEFEAT!', {
