@@ -4,6 +4,9 @@ import PeleaDebug from "../scenes/PeleaDebug.js"
 import InventarioScene from "../scenes/InventarioScene.js"
 import Estadisticas from "../scenes/Estadisticas.js"
 import ConfigScene from "../scenes/ConfigScene.js"
+import Castillo1 from "../scenes/Castillo1.js"
+import Final from "../scenes/Final.js"
+import Creditos from "../scenes/Creditos.js"
 
 
 
@@ -21,7 +24,7 @@ const config = {
     // se refiere a dónde se pondrá el canvas o lienzo
     pixelArt: true, //Diseño con pixeles definidos (no borrosos)
     backgroundColor: "#000000ff", //Color de fondo del canvas ()
-    scene: [Bootloader, EscenaDebug, PeleaDebug, InventarioScene, Estadisticas, ConfigScene], //Configuración de la escena o mundos de phaser
+    scene: [Bootloader, EscenaDebug, PeleaDebug, InventarioScene, Estadisticas, ConfigScene, Castillo1, Final, Creditos], //Configuración de la escena o mundos de phaser
 
     physics: {
         default: 'arcade',

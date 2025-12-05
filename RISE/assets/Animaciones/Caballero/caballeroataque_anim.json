@@ -1,0 +1,24 @@
+{
+    "anims": [
+        {
+            "key": "caballeroatk",
+            "type": "frames",
+            "repeat": -1,
+            "frameRate": 6,
+            "frames": [
+                {
+                    "key": "caballeroataque",
+                    "frame": "caballerito_atk1"
+                },
+                {
+                    "key": "caballeroataque",
+                    "frame": "caballerito_atk2"
+                },
+                {
+                    "key": "caballeroataque",
+                    "frame": "caballerito_atk3"
+                }
+            ]
+        }
+    ]
+}

@@ -30,6 +30,14 @@ export default class InventarioScene extends Phaser.Scene {
                 scale: 1.5,
                 stackable: true,
                 manaAmount: 3
+            },
+            phoenixTail: {
+                nombre: "Pluma de Fénix",
+                descripcion: "Revive a un personaje sin vida, restaurándole el 50% de su salud máxima.",
+                imageKey: 'phoenixTail',
+                scale: 1.5,
+                stackable: true,
+                reviveHpPercent: 0.5
             }
         };
     }
@@ -45,6 +53,8 @@ export default class InventarioScene extends Phaser.Scene {
         this.load.image('potion', 'assets/sprites/objetos/fb278.png');
         // Cargar sprite de poción de maná (puede haber sido cargada por otra escena)
         this.load.image('manaPotion', 'assets/sprites/objetos/fb293.png');
+        // Cargar sprite de Cola de Fénix
+        this.load.image('phoenixTail', 'assets/sprites/objetos/fa259.png');
     }
 
     create() {
@@ -126,10 +136,11 @@ export default class InventarioScene extends Phaser.Scene {
     }
 
     cerrarInventario() {
-        // No remover los listeners aquí, solo dormir la escena
-        // Los listeners se mantienen pero no se activan mientras la escena está dormida
+        // Dormir la escena (será despertada cuando se presione I de nuevo)
         this.scene.sleep();
-        this.scene.resume('EscenaDebug');
+        // Reanudar la escena que pausó
+        const sceneQuePauso = this.registry.get('sceneQuePauso') || 'EscenaDebug';
+        this.scene.resume(sceneQuePauso);
     }
 
     selectPreviousItem() {

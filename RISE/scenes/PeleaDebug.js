@@ -20,6 +20,8 @@ class PeleaDebug extends Phaser.Scene {
             // Caballero - animaciones de golpes (atlas + animation JSON)
             this.load.atlas('golpe_debil', 'assets/Animaciones/CaballeroGolpes/golpe_debil.png', 'assets/Animaciones/CaballeroGolpes/golpe_debil_atlas.json');
             this.load.animation('caballeroGolpesAnim', 'assets/Animaciones/CaballeroGolpes/golpe_debil_anim.json');
+        // Mago - animación de ataque
+        this.load.atlas('magoataque', 'assets/Animaciones/Mago/magoataque.png', 'assets/Animaciones/Mago/magoataque_atlas.json');
         this.load.atlas('corazon','assets/Animaciones/Mago/vidasjuego.png','assets/Animaciones/Mago/vidasjuego.json') 
         //Audios
         this.load.audio("PeleaTutorial", "assets/audio/FFVIIPeleaTutorial.mp3");
@@ -210,6 +212,18 @@ class PeleaDebug extends Phaser.Scene {
                 frameRate: 10,
                 repeat: 0
             });
+        }
+
+        // Crear animación de ataque del Mago
+        if (this.textures.exists('magoataque') && !this.anims.get('magoataque')) {
+            const framesMA = this.textures.get('magoataque').getFrameNames();
+            this.anims.create({
+                key: 'magoataque',
+                frames: framesMA.map(f => ({ key: 'magoataque', frame: f })),
+                frameRate: 10,
+                repeat: 0
+            });
+            console.log('Animación magoataque creada');
         }
       
         // === CREAR ANIMACIÓN DEL CORAZÓN ===
@@ -791,18 +805,102 @@ class PeleaDebug extends Phaser.Scene {
         // Validar que el ataque tenga usos disponibles
         if (attack.type === 'normal' && attacker.normalAttackUses <= 0) {
             this.showMessage('No uses left!');
+            // Ocultar el menú mientras se muestra el mensaje y limpiar elementos temporales
+            this.removeTemporaryMenus();
+            if (this.menuContainer) this.menuContainer.setVisible(false);
+            this.gameState.inMenu = false;
+            // Restaurar menú después de que el mensaje desaparezca
+            this.time.delayedCall(1600, () => {
+                if (this.menuContainer) this.menuContainer.setVisible(true);
+                this.gameState.inMenu = true;
+            });
             return;
         }
 
         if (attack.type === 'strong' && attacker.strongAttackUses <= 0) {
             this.showMessage('No uses left!');
+            this.removeTemporaryMenus();
+            if (this.menuContainer) this.menuContainer.setVisible(false);
+            this.gameState.inMenu = false;
+            this.time.delayedCall(1600, () => {
+                if (this.menuContainer) this.menuContainer.setVisible(true);
+                this.gameState.inMenu = true;
+            });
             return;
         }
 
         // Marca que un ataque está en progreso (limpia al terminar el turno)
         this._attackInProgress = true;
 
-        // === ANIMAR SALTO PARABÓLICO DEL ATACANTE HACIA EL ENEMIGO ===
+        // Si es el Mago, ejecutar ataque sin salto de ida
+        if (attacker.type === 'mage' && this.anims.exists('magoataque')) {
+            // === COMPORTAMIENTO DEL MAGO: Reproducir animación magoataque SIN salto ===
+            console.log('Ejecutando ataque del Mago (sin salto)');
+            
+            // Guardar sprite original
+            const originalSprite = attacker.sprite;
+            originalSprite.setVisible(false);
+            
+            // Crear sprite de animación del Mago en su posición actual
+            const animSprite = this.add.sprite(originalSprite.x, originalSprite.y, 'magoataque')
+                .setScale(originalSprite.scaleX, originalSprite.scaleY)
+                .setOrigin(originalSprite.originX, originalSprite.originY)
+                .setDepth(originalSprite.depth);
+            
+            animSprite.play({ key: 'magoataque', repeat: 0 });
+            
+            // Obtener duración de la animación
+            const anim = this.anims.get('magoataque');
+            let durationMs = 700; // fallback
+            if (anim && anim.frames && anim.frameRate) {
+                durationMs = (anim.frames.length / anim.frameRate) * 1000;
+            }
+            
+            // Aplicar daño al ~50% de la animación
+            this.time.delayedCall(Math.floor(durationMs * 0.5), () => {
+                let damage;
+                if (Number.isFinite(attack.damage)) {
+                    damage = attack.damage;
+                } else {
+                    if (attack.type === 'normal') damage = attacker.attack;
+                    else if (attack.type === 'strong') damage = Math.floor(attacker.attack * 2);
+                    else if (attack.type === 'spell') damage = attacker.attack;
+                    else damage = attacker.attack;
+                }
+                
+                target.hp = Math.max(0, target.hp - damage);
+                
+                // Decrementar usos según tipo de ataque
+                if (attack.type === 'normal') attacker.normalAttackUses--;
+                else if (attack.type === 'strong') attacker.strongAttackUses--;
+                else if (attack.type === 'spell') attacker.normalAttackUses--;
+                
+                this.shakeSprite(target.sprite);
+                this.add.text(target.sprite.x, target.sprite.y - 40, `-${damage}`, {
+                    font: '20px Arial',
+                    fill: '#FF0000'
+                }).setOrigin(0.5, 0.5).setDepth(10).setData('floatingText', true);
+                
+                if (target.hp <= 0) target.dead = true;
+                this.updateHPDisplay(target);
+            });
+            
+            // Cuando termine la animación, destruir sprite temporal
+            animSprite.once('animationcomplete-magoataque', () => {
+                animSprite.destroy();
+                originalSprite.setVisible(true);
+                
+                this._attackInProgress = false;
+                if (onComplete) {
+                    onComplete();
+                } else {
+                    this.endPlayerTurn();
+                }
+            });
+            return; // Salir de performAttack para el Mago
+        }
+
+        // === ANIMAR SALTO PARABÓLICO DEL ATACANTE HACIA EL ENEMIGO (para Caballero y otros) ===
         // Guardar posición original del atacante y cámara
         const originalX = attacker.sprite.x;
         const originalY = attacker.sprite.y;
@@ -1423,9 +1521,12 @@ class PeleaDebug extends Phaser.Scene {
         
         // Marcar este enemigo como el atacante actual
         attacker.isAttacking = true;
+
+        // Determinar el tipo específico de este enemigo atacante
+        const attackerEnemyKey = attacker.enemyKey || this.enemyKey;
         
         // Verificar si es un ojo murciélago para usar vuelo diferente
-        if (this.enemyType === 'ojoMurcielago') {
+        if (attackerEnemyKey === 'ojoMurcielago') {
             // === MOVIMIENTO DE VUELO PARA OJO MURCIÉLAGO (arriba hacia abajo) ===
             const targetX = target.sprite.x + 150; // Más a la derecha, no encima
             const targetY = target.sprite.y;
@@ -1441,9 +1542,14 @@ class PeleaDebug extends Phaser.Scene {
                 onComplete: () => {
                     // Esperar 1 segundo antes de atacar
                     this.time.delayedCall(1000, () => {
-                        const damage = this.enemyType === 'slime' ? 10 : 15;
+                        const damageMap = { slime: 10, ojoMurcielago: 15, gusano: 35 };
+                        const damage = damageMap[attackerEnemyKey] || 10;
                         target.hp = Math.max(0, target.hp - damage);
-                        this.sound.play('HitJugador');
+                        if (attackerEnemyKey === 'gusano' && this.sound) {
+                            this.sound.play('GusanoMordida');
+                        } else if (this.sound) {
+                            this.sound.play('HitJugador');
+                        }
                         this.shakeSprite(target.sprite);
 
                         this.add.text(target.sprite.x, target.sprite.y - 40, `-${damage}`, {
@@ -1516,9 +1622,14 @@ class PeleaDebug extends Phaser.Scene {
                 },
                 onComplete: () => {
                     this.time.delayedCall(1000, () => {
-                        const damage = this.enemyType === 'slime' ? 10 : 15;
+                        const damageMap = { slime: 10, ojoMurcielago: 15, gusano: 35 };
+                        const damage = damageMap[attackerEnemyKey] || 10;
                         target.hp = Math.max(0, target.hp - damage);
-                        this.sound.play('HitJugador');
+                        if (attackerEnemyKey === 'gusano' && this.sound) {
+                            this.sound.play('GusanoMordida');
+                        } else if (this.sound) {
+                            this.sound.play('HitJugador');
+                        }
                         this.shakeSprite(target.sprite);
 
                         this.add.text(target.sprite.x, target.sprite.y - 40, `-${damage}`, {

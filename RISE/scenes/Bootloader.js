@@ -139,6 +139,14 @@ class Bootloader extends Phaser.Scene{
 
         //Titulo===============================================================================================================
 
+            //Boton Creditos: abrir escena Creditos
+            this.BotonCreditos.on('pointerdown', () => {
+                // Iniciar la escena de créditos y detener la música del menú
+                this.scene.start('Creditos');
+                if (this.MusicaMenu && this.MusicaMenu.isPlaying) {
+                    this.MusicaMenu.stop();
+                }
+            });
         this.TituloJuego = this.add.image(450, 200, "Titulo");
         this.EspadaTitulo = this.add.image(450, 200, "Espada");
 

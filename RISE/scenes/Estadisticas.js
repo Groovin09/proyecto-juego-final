@@ -1,4 +1,4 @@
-class Estadisticas extends Phaser.Scene {
+export default class Estadisticas extends Phaser.Scene {
     constructor() {
         super({ key: 'Estadisticas' });
     }
@@ -8,6 +8,7 @@ class Estadisticas extends Phaser.Scene {
     }
 
     create() {
+        console.log('Estadisticas: create() start');
         // === OBTENER DATOS DE LOS PERSONAJES ===
         // Los datos se pasan a través del registry (almacenamiento global de Phaser)
         let playerData = this.registry.get('playerParty') || [];
@@ -76,8 +77,9 @@ class Estadisticas extends Phaser.Scene {
 
         // === CONTROLES ===
         this.input.keyboard.once('keydown-ENTER', () => {
-            this.scene.stop('Estadisticas');
-            this.scene.wake('EscenaDebug'); // Despertar la escena pausada
+            this.scene.stop(); // Detener la escena
+            const sceneQuePauso = this.registry.get('sceneQuePauso') || 'EscenaDebug';
+            this.scene.resume(sceneQuePauso);
         });
     }
 
@@ -195,5 +197,3 @@ class Estadisticas extends Phaser.Scene {
         // El update no es necesario para esta escena estática
     }
 }
-
-export default Estadisticas;
